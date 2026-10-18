@@ -169,8 +169,11 @@ func golar_js_workspace_GetTypeAtLocation(threadId C.uint32_t) {
 	castWorkspace(workspacePtr).GetTypeAtLocation(buf, uint32(threadId), programId, castNode(nodePtr))
 }
 
+// Long-running workspace calls run off the JS main thread so that its
+// SIGINT/SIGTERM handlers can still run and exit the process.
+
 //export golar_js_workspace_Lint
-func golar_js_workspace_Lint() {
+func golar_js_workspace_Lint(doneCbTsfn C.uintptr_t) {
 	buf := syncBuffers[0]
 
 	var offset uint32
@@ -179,7 +182,11 @@ func golar_js_workspace_Lint() {
 	payloadLen := binary.LittleEndian.Uint32(buf[offset:])
 	offset += 4
 	payload := slices.Clone(buf[offset : offset+payloadLen])
-	castWorkspace(workspacePtr).Lint(payload)
+
+	go func() {
+		castWorkspace(workspacePtr).Lint(payload)
+		C.napi_call_threadsafe_function_any(doneCbTsfn, 0, 0)
+	}()
 }
 
 //export golar_js_workspace_Report
@@ -222,14 +229,19 @@ func golar_js_tsc(threadId C.uint32_t, doneCbTsfn C.uintptr_t) {
 }
 
 //export golar_js_workspace_TypeCheck
-func golar_js_workspace_TypeCheck() C.uint32_t {
+func golar_js_workspace_TypeCheck(doneCbTsfn C.uintptr_t) {
 	buf := syncBuffers[0]
 
 	offset := uint32(0)
 	workspacePtr := binary.LittleEndian.Uint64(buf[offset:])
 	offset += 8
+	filesCount := binary.LittleEndian.Uint32(buf[offset:])
+	request := slices.Clone(buf[offset : offset+4+4*filesCount])
 
-	return C.uint32_t(castWorkspace(workspacePtr).TypeCheck(buf[offset:]))
+	go func() {
+		exitCode := castWorkspace(workspacePtr).TypeCheck(request)
+		C.napi_call_threadsafe_function_any(doneCbTsfn, C.uintptr_t(exitCode), 0)
+	}()
 }
 
 //export golar_workspace_get_requested_file

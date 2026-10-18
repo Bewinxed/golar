@@ -160,7 +160,7 @@ if (argv[0] === 'tsc') {
 	const { meta, workspace: wsPromise } = await Workspace.create(cwd, files)
 	const ws = await wsPromise
 	if (!typecheckOnly) {
-		ws.lintBuiltin(builtinRulesByFile)
+		await ws.lintBuiltin(builtinRulesByFile)
 		ws.lintNative(nativeRulesByFile, path.dirname(configPath))
 		const promises: Promise<void>[] = []
 		if (jsRulesByFile.size > 0) {
@@ -196,7 +196,7 @@ if (argv[0] === 'tsc') {
 		await Promise.all(promises)
 	}
 	if (!lintOnly) {
-		process.exit(ws.typecheck(typecheckFiles))
+		process.exit(await ws.typecheck(typecheckFiles))
 	}
 	// TODO: 1 if some worker lint failed
 	process.exit(0)

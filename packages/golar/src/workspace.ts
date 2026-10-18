@@ -255,7 +255,7 @@ export class Workspace implements Disposable {
 		return file.nodes[handle.nodeIndex]!
 	}
 
-	typecheck(files: string[]): number {
+	async typecheck(files: string[]): Promise<number> {
 		if (files.length === 0) {
 			return 0
 		}
@@ -269,10 +269,10 @@ export class Workspace implements Disposable {
 			syncView.setUint32(offset, fileIdx, true)
 			offset += 4
 		}
-		return addon.workspace_TypeCheck()
+		return await new Promise((resolve) => addon.workspace_TypeCheck(resolve))
 	}
 
-	lintBuiltin(rulesByFile: Map<string, LintConfiguredRule[]>) {
+	async lintBuiltin(rulesByFile: Map<string, LintConfiguredRule[]>) {
 		if (rulesByFile.size === 0) {
 			return
 		}
@@ -316,7 +316,7 @@ export class Workspace implements Disposable {
 		)
 		syncView.setUint32(offset, length, true)
 		offset += 4 + length
-		addon.workspace_Lint()
+		await new Promise<void>((resolve) => addon.workspace_Lint(resolve))
 	}
 
 	lintNative(rulesByFile: Map<string, LintConfiguredRule[]>, baseDir: string) {

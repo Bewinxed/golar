@@ -15,8 +15,8 @@ const addonModule = {
 		workspace_ReadRequestedFileAt(threadId: number): void
 		workspace_ReadFileById(threadId: number): void
 		workspace_GetTypeAtLocation(threadId: number): void
-		workspace_Lint(): void
-		workspace_TypeCheck(): number
+		workspace_Lint(done: () => void): void
+		workspace_TypeCheck(done: (exitCode: number) => void): void
 		workspace_Report(threadId: number): void
 	},
 }

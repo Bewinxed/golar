@@ -175,8 +175,23 @@ static napi_value workspace_GetTypeAtLocation_bridge(napi_env env, napi_callback
 	return NULL;
 }
 
+static void call_lint_done_cb(napi_env env, napi_value cb, void *context, void *data) {
+	napi_value undefined;
+	napi_get_undefined(env, &undefined);
+	napi_call_function(env, undefined, cb, 0, NULL, NULL);
+}
 static napi_value workspace_Lint_bridge(napi_env env, napi_callback_info info) {
-	golar_js_workspace_Lint();
+	size_t argc = 1;
+	napi_value done_cb;
+	napi_get_cb_info(env, info, &argc, &done_cb, NULL, NULL);
+
+	napi_value resource_name;
+	napi_create_string_utf8(env, "golar: lint done", NAPI_AUTO_LENGTH, &resource_name);
+
+	napi_threadsafe_function done_cb_tsfn;
+	napi_create_threadsafe_function(env, done_cb, NULL, resource_name, 0, 1, NULL, NULL, NULL, call_lint_done_cb, &done_cb_tsfn);
+
+	golar_js_workspace_Lint((uintptr_t)done_cb_tsfn);
 	return NULL;
 }
 
@@ -237,7 +252,7 @@ static napi_value registerIpcCodegen_bridge(napi_env env, napi_callback_info inf
 	return NULL;
 }
 
-static void call_tsc_done_cb(napi_env env, napi_value cb, void *context, void *data) {
+static void call_exit_code_cb(napi_env env, napi_value cb, void *context, void *data) {
 	napi_value undefined;
 	napi_get_undefined(env, &undefined);
 
@@ -259,7 +274,7 @@ static napi_value tsc_bridge(napi_env env, napi_callback_info info) {
 	napi_create_string_utf8(env, "golar: tsc done", NAPI_AUTO_LENGTH, &resource_name);
 
 	napi_threadsafe_function done_cb_tsfn;
-	napi_create_threadsafe_function(env, argv[1], NULL, resource_name, 0, 1, NULL, NULL, NULL, call_tsc_done_cb, &done_cb_tsfn);
+	napi_create_threadsafe_function(env, argv[1], NULL, resource_name, 0, 1, NULL, NULL, NULL, call_exit_code_cb, &done_cb_tsfn);
 
 	golar_js_tsc(thread_id, (uintptr_t)done_cb_tsfn);
 
@@ -267,10 +282,18 @@ static napi_value tsc_bridge(napi_env env, napi_callback_info info) {
 }
 
 static napi_value workspace_TypeCheck_bridge(napi_env env, napi_callback_info info) {
-	uint32_t exit_code = golar_js_workspace_TypeCheck();
-	napi_value result;
-	napi_create_uint32(env, exit_code, &result);
-	return result;
+	size_t argc = 1;
+	napi_value done_cb;
+	napi_get_cb_info(env, info, &argc, &done_cb, NULL, NULL);
+
+	napi_value resource_name;
+	napi_create_string_utf8(env, "golar: typecheck done", NAPI_AUTO_LENGTH, &resource_name);
+
+	napi_threadsafe_function done_cb_tsfn;
+	napi_create_threadsafe_function(env, done_cb, NULL, resource_name, 0, 1, NULL, NULL, NULL, call_exit_code_cb, &done_cb_tsfn);
+
+	golar_js_workspace_TypeCheck((uintptr_t)done_cb_tsfn);
+	return NULL;
 }
 
 void napi_call_threadsafe_function_any(uintptr_t func, uintptr_t data, size_t is_blocking) {
