@@ -13,6 +13,7 @@ packages:
   - e2e/vue-pug/fixture
   - e2e/vue-tsc-incremental/fixture
   - e2e/vue-unknown-component/fixture
+  - e2e/vue-v-model/fixture
   - e2e/vue-vitepress/fixture
   - packages/*
   - generated-packages/*

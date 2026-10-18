@@ -161,6 +161,15 @@ export function createVolarPlugin(opts: CreateVolarPluginOptions) {
 					} else {
 						currentExpectErrorGroup = undefined
 					}
+					if (m.generatedOffsets.length > 1) {
+						const generatedLengths = m.generatedLengths ?? m.lengths
+						serviceCovered.push([
+							Math.min(...m.generatedOffsets),
+							Math.max(
+								...m.generatedOffsets.map((o, i) => o + generatedLengths[i]!),
+							),
+						])
+					}
 					return m.sourceOffsets.map((sourceOffset, i): CodegenMapping => {
 						const generatedOffset = m.generatedOffsets[i]!
 						const sourceLength = m.lengths[i]!

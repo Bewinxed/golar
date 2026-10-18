@@ -198,6 +198,15 @@ importers:
         specifier: ^3.5.44
         version: 3.5.44(typescript@6.0.3)
 
+  e2e/vue-v-model/fixture:
+    dependencies:
+      '@golar/vue':
+        specifier: workspace:*
+        version: link:../../../packages/vue
+      vue:
+        specifier: ^3.5.44
+        version: 3.5.44(typescript@6.0.3)
+
   e2e/vue-vitepress/fixture:
     dependencies:
       '@golar/vue':

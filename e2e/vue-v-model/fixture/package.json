@@ -1,0 +1,7 @@
+{
+	"type": "module",
+	"dependencies": {
+		"@golar/vue": "workspace:*",
+		"vue": "^3.5.44"
+	}
+}
