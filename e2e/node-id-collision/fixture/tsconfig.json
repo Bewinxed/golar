@@ -1,0 +1,15 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"noEmit": true,
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"types": []
+	},
+	"files": [
+		"generic/valid.ts",
+		"generic/invalid.ts",
+		"discriminated/a.ts",
+		"discriminated/b.ts"
+	]
+}

@@ -99,6 +99,12 @@ importers:
         specifier: ^3.5.44
         version: 3.5.44(typescript@6.0.3)
 
+  e2e/node-id-collision/fixture:
+    dependencies:
+      golar:
+        specifier: workspace:*
+        version: link:../../../packages/golar
+
   e2e/service-code-error/fixture:
     dependencies:
       '@golar/vue':
