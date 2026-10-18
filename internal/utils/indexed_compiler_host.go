@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"sync"
+
 	"github.com/microsoft/TypeScript/tsc/pkg/ast"
 	"github.com/microsoft/TypeScript/tsc/pkg/compiler"
 	"github.com/microsoft/TypeScript/tsc/pkg/tspath"
@@ -25,10 +27,16 @@ func (h *IndexedCompilerHost) GetSourceFile(opts ast.SourceFileParseOptions) *as
 	return sourceFile
 }
 
+var stampLocks [64]sync.Mutex
+
 func stampSourceFileNodeIDs(sourceFile *ast.SourceFile) {
 	if sourceFile == nil {
 		return
 	}
+
+	lock := &stampLocks[sourceFile.Id%uint32(len(stampLocks))]
+	lock.Lock()
+	defer lock.Unlock()
 
 	root := sourceFile.AsNode()
 	if root.Id == 1 && root.SourceFileId == sourceFile.Id {
@@ -36,8 +44,6 @@ func stampSourceFileNodeIDs(sourceFile *ast.SourceFile) {
 	}
 
 	var nodeIndex uint32 = 1
-	root.Id = nodeIndex
-	root.SourceFileId = sourceFile.Id
 
 	visitor := &ast.NodeVisitor{
 		Hooks: ast.NodeVisitorHooks{
@@ -76,4 +82,7 @@ func stampSourceFileNodeIDs(sourceFile *ast.SourceFile) {
 	for _, jsdoc := range root.JSDoc(sourceFile) {
 		visitor.Visit(jsdoc)
 	}
+
+	root.Id = 1
+	root.SourceFileId = sourceFile.Id
 }
