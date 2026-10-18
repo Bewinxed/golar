@@ -1,6 +1,9 @@
 package mapping
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestBinarySearch(t *testing.T) {
 	cases := []struct {
@@ -482,4 +485,26 @@ func assertRangesSet(t *testing.T, got []MappedRange, want [][2]uint32) {
 
 func intPtr(value int) *int {
 	return &value
+}
+
+func TestSourceMapRangesFallbackOrderIsDeterministic(t *testing.T) {
+	mappings := []Mapping{
+		{SourceOffset: 1, ServiceOffset: 100},
+		{SourceOffset: 19, ServiceOffset: 165},
+		{SourceOffset: 2, ServiceOffset: 100, SourceLength: 5},
+		{SourceOffset: 8, ServiceOffset: 105, SourceLength: 5},
+	}
+
+	for range 200 {
+		ranges := NewSourceMap(slices.Clone(mappings)).ToSourceRange(100, 110, true)
+		if len(ranges) != 2 {
+			t.Fatalf("got %d ranges, want 2", len(ranges))
+		}
+		if ranges[0].MappedStart != 1 || ranges[0].MappedEnd != 13 {
+			t.Fatalf("first range = [%d, %d), want [1, 13)", ranges[0].MappedStart, ranges[0].MappedEnd)
+		}
+		if ranges[1].MappedStart != 2 || ranges[1].MappedEnd != 13 {
+			t.Fatalf("second range = [%d, %d), want [2, 13)", ranges[1].MappedStart, ranges[1].MappedEnd)
+		}
+	}
 }

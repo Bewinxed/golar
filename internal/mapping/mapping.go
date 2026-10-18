@@ -23,7 +23,7 @@ type Mapping struct {
 
 type MappingMemo struct {
 	offsets  []uint32
-	mappings []*collections.Set[*Mapping]
+	mappings [][]*Mapping
 }
 
 type SourceMap struct {
@@ -145,7 +145,7 @@ func (m *SourceMap) findMatchingOffsets(
 	results := make([]MappedLocation, 0)
 
 	for i := start; i <= end; i++ {
-		for mapping := range memo.mappings[i].Keys() {
+		for _, mapping := range memo.mappings[i] {
 			if !skip.AddIfAbsent(mapping) {
 				continue
 			}
@@ -257,21 +257,17 @@ func (m *SourceMap) createMemo(key CodeRangeKey) MappingMemo {
 	}
 	slices.Sort(offsets)
 
-	mappings := make([]*collections.Set[*Mapping], len(offsets))
-	for i := range mappings {
-		mappings[i] = collections.NewSetWithSizeHint[*Mapping](0)
-	}
-
-	for _, mapping := range m.Mappings {
-		startOffset := getOffset(&mapping, key)
-		length := getLength(&mapping, key)
+	mappings := make([][]*Mapping, len(offsets))
+	for i := range m.Mappings {
+		mapping := &m.Mappings[i]
+		startOffset := getOffset(mapping, key)
+		length := getLength(mapping, key)
 		endOffset := startOffset + length
 		_, _, startMatch := BinarySearch(offsets, startOffset)
 		_, _, endMatch := BinarySearch(offsets, endOffset)
 		for j := startMatch; j <= endMatch; j++ {
-			mappings[j].Add(&mapping)
+			mappings[j] = append(mappings[j], mapping)
 		}
-
 	}
 
 	return MappingMemo{offsets: offsets, mappings: mappings}
