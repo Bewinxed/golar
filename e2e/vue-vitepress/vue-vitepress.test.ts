@@ -18,7 +18,7 @@ test('vue VitePress', async () => {
 		2  const foo: string = 123
 		         ~~~
 
-		docs.md:6:4 - error TS2339: Property 'bar' does not exist on type '{ $: ComponentInternalInstance; $data: {}; $props: {}; $attrs: Data; $refs: Data; $slots: Readonly<InternalSlots>; $root: ComponentPublicInstance<...> | null; ... 8 more ...; foo: string; }'.
+		docs.md:6:4 - error TS2339: Property 'bar' does not exist on type 'ComponentPublicInstance<{}, {}, {}, {}, {}, {}, {}, {}, false, ComponentOptionsBase<any, any, any, any, any, any, any, any, any, {}, {}, string, {}, {}, {}, string, ComponentProvideOptions>, ... 4 more ..., any>'.
 
 		6 {{ bar }}
 		     ~~~

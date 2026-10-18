@@ -7,6 +7,6 @@
 		"@golar/vue": "workspace:*",
 		"astro": "^5.18.0",
 		"svelte": "^5.53.6",
-		"vue": "^3.5.29"
+		"vue": "^3.5.44"
 	}
 }

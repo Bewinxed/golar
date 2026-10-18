@@ -7,7 +7,7 @@
 		"@golar/vue": "workspace:*",
 		"golar": "workspace:*",
 		"typescript": "^5.9.3",
-		"vue": "^3.5.29",
+		"vue": "^3.5.44",
 		"vue-router": "^5.0.4"
 	}
 }

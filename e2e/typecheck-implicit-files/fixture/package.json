@@ -3,6 +3,6 @@
 	"dependencies": {
 		"@golar/vue": "workspace:*",
 		"golar": "workspace:*",
-		"vue": "^3.5.29"
+		"vue": "^3.5.44"
 	}
 }

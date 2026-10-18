@@ -52,7 +52,7 @@ patchFile('@vue/language-core/lib/codegen/template/context.js', (src) => {
 	)
 	src = replaceOrThrow(
 		src,
-		/shouldReport: \(\) => data\.expectError\.token === 0,\n(\s*)},/,
+		/shouldReport: \(\) => (?:data|info)\.expectError\.token === 0,\n(\s*)},/,
 		(s, indent) => `${s}\n${indent}__expectErrorMarker: true,`,
 	)
 

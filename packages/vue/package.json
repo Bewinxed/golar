@@ -32,11 +32,11 @@
 	"dependencies": {
 		"@golar/util": "workspace:*",
 		"@golar/volar": "workspace:*",
-		"@vue/compiler-dom": "^3.5.0",
-		"@vue/language-core": "3.3.5"
+		"@vue/compiler-dom": "^3.5.44",
+		"@vue/language-core": "3.3.13"
 	},
 	"devDependencies": {
-		"@vue/compiler-sfc": "^3.5.38",
+		"@vue/compiler-sfc": "^3.5.44",
 		"esbuild": "^0.28.1",
 		"typescript": "^6.0.3"
 	}
