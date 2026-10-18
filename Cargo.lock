@@ -152,7 +152,7 @@ dependencies = [
 
 [[package]]
 name = "golar"
-version = "0.1.10"
+version = "0.1.11"
 dependencies = [
  "inventory",
  "libloading",
