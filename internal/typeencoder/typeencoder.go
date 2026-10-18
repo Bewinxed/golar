@@ -5,9 +5,9 @@ import (
 	"math"
 	"unsafe"
 
-	"github.com/microsoft/typescript-go/pkg/ast"
-	"github.com/microsoft/typescript-go/pkg/checker"
-	"github.com/microsoft/typescript-go/pkg/jsnum"
+	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+	"github.com/microsoft/TypeScript/tsc/pkg/checker"
+	"github.com/microsoft/TypeScript/tsc/pkg/jsnum"
 )
 
 var intrinsicNames = [...]string{
@@ -38,6 +38,8 @@ func init() {
 type Encoder struct {
 	seenTypes   []uint64
 	seenSymbols []uint64
+	// Compact wire IDs are independent of upstream's block-allocated 64-bit IDs.
+	symbolIDs map[ast.SymbolId]uint32
 }
 
 const (
@@ -53,7 +55,7 @@ const supportedLiteralFlags = checker.TypeFlagsStringLiteral |
 	checker.TypeFlagsBigIntLiteral
 
 func New() *Encoder {
-	return &Encoder{}
+	return &Encoder{symbolIDs: make(map[ast.SymbolId]uint32)}
 }
 
 func (e *Encoder) Reset() {
@@ -141,7 +143,15 @@ func (e *Encoder) appendTypes(buf []byte, types []*checker.Type) []byte {
 func (e *Encoder) EncodeSymbol(buf []byte, s *ast.Symbol) []byte {
 	var id uint32
 	if s != nil {
-		id = uint32(ast.GetSymbolId(s))
+		symbolID := ast.GetSymbolId(s)
+		id = e.symbolIDs[symbolID]
+		if id == 0 {
+			if uint64(len(e.symbolIDs)) == math.MaxUint32 {
+				panic("encoder: exhausted symbol wire IDs")
+			}
+			id = uint32(len(e.symbolIDs) + 1)
+			e.symbolIDs[symbolID] = id
+		}
 	}
 	buf = binary.LittleEndian.AppendUint32(buf, id)
 	if id == 0 {
@@ -152,27 +162,27 @@ func (e *Encoder) EncodeSymbol(buf []byte, s *ast.Symbol) []byte {
 	}
 
 	buf = appendPointer(buf, s)
-	buf = binary.LittleEndian.AppendUint32(buf, uint32(s.Flags))
-	buf = binary.LittleEndian.AppendUint32(buf, uint32(s.CheckFlags))
-	buf = appendByteString(buf, s.Name)
+	buf = binary.LittleEndian.AppendUint32(buf, uint32(s.Flags()))
+	buf = binary.LittleEndian.AppendUint32(buf, uint32(s.CheckFlags()))
+	buf = appendByteString(buf, s.Name())
 
-	buf = binary.LittleEndian.AppendUint32(buf, uint32(len(s.Declarations)))
-	for _, declaration := range s.Declarations {
+	buf = binary.LittleEndian.AppendUint32(buf, uint32(len(s.Declarations())))
+	for _, declaration := range s.Declarations() {
 		buf = appendNodePointer(buf, declaration)
 	}
 
-	buf = appendNodePointer(buf, s.ValueDeclaration)
-	buf = e.EncodeSymbol(buf, s.Parent)
-	buf = e.EncodeSymbol(buf, s.ExportSymbol)
+	buf = appendNodePointer(buf, s.ValueDeclaration())
+	buf = e.EncodeSymbol(buf, s.Parent())
+	buf = e.EncodeSymbol(buf, s.ExportSymbol())
 
-	buf = binary.LittleEndian.AppendUint32(buf, uint32(len(s.Members)))
-	for key, member := range s.Members {
+	buf = binary.LittleEndian.AppendUint32(buf, uint32(len(s.Members())))
+	for key, member := range s.Members() {
 		buf = appendByteString(buf, key)
 		buf = e.EncodeSymbol(buf, member)
 	}
 
-	buf = binary.LittleEndian.AppendUint32(buf, uint32(len(s.Exports)))
-	for key, exported := range s.Exports {
+	buf = binary.LittleEndian.AppendUint32(buf, uint32(len(s.Exports())))
+	for key, exported := range s.Exports() {
 		buf = appendByteString(buf, key)
 		buf = e.EncodeSymbol(buf, exported)
 	}

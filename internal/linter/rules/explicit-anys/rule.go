@@ -3,9 +3,9 @@ package explicit_anys
 import (
 	"github.com/auvred/golar/internal/linter/rule"
 
-	"github.com/microsoft/typescript-go/pkg/ast"
-	"github.com/microsoft/typescript-go/pkg/core"
-	"github.com/microsoft/typescript-go/pkg/scanner"
+	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+	"github.com/microsoft/TypeScript/tsc/pkg/core"
+	"github.com/microsoft/TypeScript/tsc/pkg/scanner"
 )
 
 func Rule(ctx rule.Context, opts Options) rule.Listeners {

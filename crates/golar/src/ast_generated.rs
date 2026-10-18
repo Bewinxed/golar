@@ -248,6 +248,10 @@ where
                 || visit_node(f, unsafe { (*node.raw).fullSignature })
                 || visit_node(f, unsafe { (*node.raw).body })
         }
+        Kind::HeritageClause => {
+            let node = unsafe { HeritageClause::from_node_unchecked(node) };
+            visit_node_list(f, unsafe { (*node.raw).types.cast() })
+        }
         Kind::IfStatement => {
             let node = unsafe { IfStatement::from_node_unchecked(node) };
             visit_node(f, unsafe { (*node.raw).expression })
@@ -544,6 +548,7 @@ where
             let node = unsafe { ModuleDeclaration::from_node_unchecked(node) };
             visit_node_list(f, unsafe { (*node.raw).modifiers.cast() })
                 || visit_node(f, unsafe { (*node.raw).name })
+                || visit_node(f, unsafe { (*node.raw).attributes })
                 || visit_node(f, unsafe { (*node.raw).body })
         }
         Kind::NamedTupleMember => {
@@ -632,6 +637,7 @@ where
         Kind::QualifiedName => {
             let node = unsafe { QualifiedName::from_node_unchecked(node) };
             visit_node(f, unsafe { (*node.raw).left })
+                || visit_node(f, unsafe { (*node.raw).right })
         }
         Kind::RestType => {
             let node = unsafe { RestTypeNode::from_node_unchecked(node) };
@@ -981,6 +987,7 @@ impl<'a> FromNode<'a> for Token<'a> {
                 | Kind::OverrideKeyword
                 | Kind::OfKeyword
                 | Kind::DeferKeyword
+                | Kind::SourceKeyword
         )
     }
 
@@ -2530,25 +2537,24 @@ impl<'a> FromNode<'a> for MissingDeclaration<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawFunctionDeclaration {
-    pub symbol: *const RawSymbol,
     pub node: RawNode,
     pub _pad0: [u8; 8],
+    pub symbol: *const RawSymbol,
     pub localSymbol: *const RawSymbol,
     pub modifiers: *const RawModifierList,
     pub _pad1: [u8; 8],
     pub _pad2: [u8; 8],
-    pub _pad3: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
     pub fullSignature: *const RawNode,
     pub asteriskToken: *const RawNode,
     pub body: *const RawNode,
-    pub _pad4: [u8; 8],
+    pub _pad3: [u8; 8],
+    pub _pad4: [u8; 4],
     pub _pad5: [u8; 4],
-    pub _pad6: [u8; 4],
     pub name: *const RawNode,
-    pub _pad7: [u8; 8],
+    pub _pad6: [u8; 8],
 }
 
 #[repr(transparent)]
@@ -2614,7 +2620,7 @@ impl<'a> FromNode<'a> for FunctionDeclaration<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(8).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -2623,16 +2629,15 @@ impl<'a> FromNode<'a> for FunctionDeclaration<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawClassDeclaration {
-    pub symbol: *const RawSymbol,
     pub node: RawNode,
     pub _pad0: [u8; 8],
-    pub _pad1: [u8; 8],
+    pub symbol: *const RawSymbol,
     pub localSymbol: *const RawSymbol,
     pub modifiers: *const RawModifierList,
+    pub _pad1: [u8; 8],
     pub _pad2: [u8; 8],
-    pub _pad3: [u8; 8],
+    pub _pad3: [u8; 4],
     pub _pad4: [u8; 4],
-    pub _pad5: [u8; 4],
     pub name: *const RawNode,
     pub typeParameters: *const RawNodeList,
     pub heritageClauses: *const RawNodeList,
@@ -2690,7 +2695,7 @@ impl<'a> FromNode<'a> for ClassDeclaration<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(8).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -2820,9 +2825,9 @@ impl<'a> FromNode<'a> for HeritageClause<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawInterfaceDeclaration {
-    pub symbol: *const RawSymbol,
     pub node: RawNode,
     pub _pad0: [u8; 8],
+    pub symbol: *const RawSymbol,
     pub localSymbol: *const RawSymbol,
     pub modifiers: *const RawModifierList,
     pub name: *const RawNode,
@@ -2882,7 +2887,7 @@ impl<'a> FromNode<'a> for InterfaceDeclaration<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(8).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -2891,9 +2896,9 @@ impl<'a> FromNode<'a> for InterfaceDeclaration<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawTypeAliasDeclaration {
-    pub symbol: *const RawSymbol,
     pub node: RawNode,
     pub _pad0: [u8; 8],
+    pub symbol: *const RawSymbol,
     pub localSymbol: *const RawSymbol,
     pub modifiers: *const RawModifierList,
     pub _pad1: [u8; 8],
@@ -2953,7 +2958,7 @@ impl<'a> FromNode<'a> for TypeAliasDeclaration<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(8).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -3024,9 +3029,9 @@ impl<'a> FromNode<'a> for EnumMember<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawEnumDeclaration {
-    pub symbol: *const RawSymbol,
     pub node: RawNode,
     pub _pad0: [u8; 8],
+    pub symbol: *const RawSymbol,
     pub localSymbol: *const RawSymbol,
     pub modifiers: *const RawModifierList,
     pub _pad1: [u8; 4],
@@ -3078,7 +3083,7 @@ impl<'a> FromNode<'a> for EnumDeclaration<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(8).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -3167,6 +3172,7 @@ impl<'a> FromNode<'a> for NotEmittedStatement<'a> {
 #[derive(Copy, Clone)]
 pub struct RawNotEmittedTypeElement {
     pub node: RawNode,
+    pub symbol: *const RawSymbol,
 }
 
 #[repr(transparent)]
@@ -3180,6 +3186,10 @@ impl<'a> NotEmittedTypeElement<'a> {
     #[inline(always)]
     pub fn as_node(self) -> Node<'a> {
         Node::from_raw(unsafe { std::ptr::addr_of!((*self.raw).node) })
+    }
+
+    pub fn symbol(self) -> Option<Symbol<'a>> {
+        symbol_from_raw(unsafe { (*self.raw).symbol })
     }
 }
 
@@ -3396,9 +3406,9 @@ impl<'a> FromNode<'a> for NamedImports<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawExportAssignment {
-    pub symbol: *const RawSymbol,
     pub node: RawNode,
     pub _pad0: [u8; 8],
+    pub symbol: *const RawSymbol,
     pub modifiers: *const RawModifierList,
     pub _pad1: [u8; 4],
     pub isExportEquals: u8,
@@ -3450,7 +3460,7 @@ impl<'a> FromNode<'a> for ExportAssignment<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(8).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -3459,9 +3469,9 @@ impl<'a> FromNode<'a> for ExportAssignment<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawNamespaceExportDeclaration {
-    pub symbol: *const RawSymbol,
     pub node: RawNode,
     pub _pad0: [u8; 8],
+    pub symbol: *const RawSymbol,
     pub modifiers: *const RawModifierList,
     pub name: *const RawNode,
 }
@@ -3501,7 +3511,7 @@ impl<'a> FromNode<'a> for NamespaceExportDeclaration<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(8).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -3663,7 +3673,6 @@ pub struct RawCallSignatureDeclaration {
     pub symbol: *const RawSymbol,
     pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
@@ -3726,7 +3735,6 @@ pub struct RawConstructSignatureDeclaration {
     pub symbol: *const RawSymbol,
     pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
@@ -3790,17 +3798,16 @@ pub struct RawConstructorDeclaration {
     pub modifiers: *const RawModifierList,
     pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
     pub fullSignature: *const RawNode,
     pub asteriskToken: *const RawNode,
     pub body: *const RawNode,
-    pub _pad3: [u8; 8],
+    pub _pad2: [u8; 8],
+    pub _pad3: [u8; 4],
     pub _pad4: [u8; 4],
-    pub _pad5: [u8; 4],
-    pub _pad6: [u8; 8],
+    pub _pad5: [u8; 8],
 }
 
 #[repr(transparent)]
@@ -3867,24 +3874,22 @@ impl<'a> FromNode<'a> for ConstructorDeclaration<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawGetAccessorDeclaration {
+    pub node: RawNode,
     pub symbol: *const RawSymbol,
     pub modifiers: *const RawModifierList,
     pub name: *const RawNode,
     pub postfixToken: *const RawNode,
     pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
     pub fullSignature: *const RawNode,
     pub asteriskToken: *const RawNode,
     pub body: *const RawNode,
+    pub _pad2: [u8; 8],
     pub _pad3: [u8; 8],
-    pub _pad4: [u8; 8],
-    pub _pad5: [u8; 4],
-    pub _pad6: [u8; 4],
-    pub node: RawNode,
+    pub _pad4: [u8; 4],
 }
 
 #[repr(transparent)]
@@ -3950,7 +3955,7 @@ impl<'a> FromNode<'a> for GetAccessorDeclaration<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(128).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -3959,24 +3964,22 @@ impl<'a> FromNode<'a> for GetAccessorDeclaration<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawSetAccessorDeclaration {
+    pub node: RawNode,
     pub symbol: *const RawSymbol,
     pub modifiers: *const RawModifierList,
     pub name: *const RawNode,
     pub postfixToken: *const RawNode,
     pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
     pub fullSignature: *const RawNode,
     pub asteriskToken: *const RawNode,
     pub body: *const RawNode,
+    pub _pad2: [u8; 8],
     pub _pad3: [u8; 8],
-    pub _pad4: [u8; 8],
-    pub _pad5: [u8; 4],
-    pub _pad6: [u8; 4],
-    pub node: RawNode,
+    pub _pad4: [u8; 4],
 }
 
 #[repr(transparent)]
@@ -4042,7 +4045,7 @@ impl<'a> FromNode<'a> for SetAccessorDeclaration<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(128).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -4056,7 +4059,6 @@ pub struct RawIndexSignatureDeclaration {
     pub modifiers: *const RawModifierList,
     pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
@@ -4126,7 +4128,6 @@ pub struct RawMethodSignatureDeclaration {
     pub postfixToken: *const RawNode,
     pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
@@ -4204,16 +4205,15 @@ pub struct RawMethodDeclaration {
     pub postfixToken: *const RawNode,
     pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
     pub fullSignature: *const RawNode,
     pub asteriskToken: *const RawNode,
     pub body: *const RawNode,
+    pub _pad2: [u8; 8],
     pub _pad3: [u8; 8],
-    pub _pad4: [u8; 8],
-    pub _pad5: [u8; 4],
+    pub _pad4: [u8; 4],
 }
 
 #[repr(transparent)]
@@ -4594,10 +4594,9 @@ impl<'a> FromNode<'a> for KeywordExpression<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawStringLiteral {
+    pub node: RawNode,
     pub text: GoString,
     pub _pad0: [u8; 4],
-    pub _pad1: [u8; 4],
-    pub node: RawNode,
 }
 
 #[repr(transparent)]
@@ -4627,7 +4626,7 @@ impl<'a> FromNode<'a> for StringLiteral<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(24).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -4636,10 +4635,9 @@ impl<'a> FromNode<'a> for StringLiteral<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawNumericLiteral {
+    pub node: RawNode,
     pub text: GoString,
     pub _pad0: [u8; 4],
-    pub _pad1: [u8; 4],
-    pub node: RawNode,
 }
 
 #[repr(transparent)]
@@ -4669,7 +4667,7 @@ impl<'a> FromNode<'a> for NumericLiteral<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(24).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -4678,10 +4676,9 @@ impl<'a> FromNode<'a> for NumericLiteral<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawBigIntLiteral {
+    pub node: RawNode,
     pub text: GoString,
     pub _pad0: [u8; 4],
-    pub _pad1: [u8; 4],
-    pub node: RawNode,
 }
 
 #[repr(transparent)]
@@ -4711,7 +4708,7 @@ impl<'a> FromNode<'a> for BigIntLiteral<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(24).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -4720,10 +4717,9 @@ impl<'a> FromNode<'a> for BigIntLiteral<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawRegularExpressionLiteral {
+    pub node: RawNode,
     pub text: GoString,
     pub _pad0: [u8; 4],
-    pub _pad1: [u8; 4],
-    pub node: RawNode,
 }
 
 #[repr(transparent)]
@@ -4753,7 +4749,7 @@ impl<'a> FromNode<'a> for RegularExpressionLiteral<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(24).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -5024,17 +5020,16 @@ pub struct RawArrowFunction {
     pub modifiers: *const RawModifierList,
     pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
     pub fullSignature: *const RawNode,
     pub asteriskToken: *const RawNode,
     pub body: *const RawNode,
+    pub _pad2: [u8; 8],
     pub _pad3: [u8; 8],
-    pub _pad4: [u8; 8],
+    pub _pad4: [u8; 4],
     pub _pad5: [u8; 4],
-    pub _pad6: [u8; 4],
     pub equalsGreaterThanToken: *const RawNode,
 }
 
@@ -5111,19 +5106,18 @@ pub struct RawFunctionExpression {
     pub modifiers: *const RawModifierList,
     pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
     pub fullSignature: *const RawNode,
     pub asteriskToken: *const RawNode,
     pub body: *const RawNode,
+    pub _pad2: [u8; 8],
     pub _pad3: [u8; 8],
-    pub _pad4: [u8; 8],
+    pub _pad4: [u8; 4],
     pub _pad5: [u8; 4],
-    pub _pad6: [u8; 4],
     pub name: *const RawNode,
-    pub _pad7: [u8; 8],
+    pub _pad6: [u8; 8],
 }
 
 #[repr(transparent)]
@@ -6421,7 +6415,6 @@ impl<'a> FromNode<'a> for KeywordTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawUnionTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 64],
     pub types: *const RawNodeList,
 }
 
@@ -6462,7 +6455,6 @@ impl<'a> FromNode<'a> for UnionTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawIntersectionTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 64],
     pub types: *const RawNodeList,
 }
 
@@ -6505,7 +6497,6 @@ pub struct RawConditionalTypeNode {
     pub node: RawNode,
     pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub checkType: *const RawNode,
     pub extendsType: *const RawNode,
     pub trueType: *const RawNode,
@@ -6561,9 +6552,8 @@ impl<'a> FromNode<'a> for ConditionalTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawTypeOperatorNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub operator: Kind,
-    pub _pad1: [u8; 6],
+    pub _pad0: [u8; 6],
     pub r_type: *const RawNode,
 }
 
@@ -6608,7 +6598,6 @@ impl<'a> FromNode<'a> for TypeOperatorNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawInferTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub typeParameter: *const RawNode,
 }
 
@@ -6649,7 +6638,6 @@ impl<'a> FromNode<'a> for InferTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawArrayTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub elementType: *const RawNode,
 }
 
@@ -6690,7 +6678,6 @@ impl<'a> FromNode<'a> for ArrayTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawIndexedAccessTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub objectType: *const RawNode,
     pub indexType: *const RawNode,
 }
@@ -6736,7 +6723,6 @@ impl<'a> FromNode<'a> for IndexedAccessTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawTypeReferenceNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub typeArguments: *const RawNodeList,
     pub typeName: *const RawNode,
 }
@@ -6829,7 +6815,6 @@ impl<'a> FromNode<'a> for ExpressionWithTypeArguments<'a> {
 #[derive(Copy, Clone)]
 pub struct RawLiteralTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub literal: *const RawNode,
 }
 
@@ -6905,7 +6890,6 @@ impl<'a> FromNode<'a> for ThisTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawTypePredicateNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub assertsModifier: *const RawNode,
     pub parameterName: *const RawNode,
     pub r_type: *const RawNode,
@@ -7055,7 +7039,6 @@ impl<'a> FromNode<'a> for ImportAttributes<'a> {
 #[derive(Copy, Clone)]
 pub struct RawTypeQueryNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub typeArguments: *const RawNodeList,
     pub exprName: *const RawNode,
 }
@@ -7101,10 +7084,9 @@ impl<'a> FromNode<'a> for TypeQueryNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawMappedTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub symbol: *const RawSymbol,
+    pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub readonlyToken: *const RawNode,
     pub typeParameter: *const RawNode,
     pub nameType: *const RawNode,
@@ -7174,7 +7156,6 @@ impl<'a> FromNode<'a> for MappedTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawTypeLiteralNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub symbol: *const RawSymbol,
     pub members: *const RawNodeList,
 }
@@ -7220,7 +7201,6 @@ impl<'a> FromNode<'a> for TypeLiteralNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawTupleTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub elements: *const RawNodeList,
 }
 
@@ -7261,7 +7241,6 @@ impl<'a> FromNode<'a> for TupleTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawNamedTupleMember {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub symbol: *const RawSymbol,
     pub dotDotDotToken: *const RawNode,
     pub name: *const RawNode,
@@ -7322,7 +7301,6 @@ impl<'a> FromNode<'a> for NamedTupleMember<'a> {
 #[derive(Copy, Clone)]
 pub struct RawOptionalTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub r_type: *const RawNode,
 }
 
@@ -7363,7 +7341,6 @@ impl<'a> FromNode<'a> for OptionalTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawRestTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub r_type: *const RawNode,
 }
 
@@ -7404,7 +7381,6 @@ impl<'a> FromNode<'a> for RestTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawParenthesizedTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub r_type: *const RawNode,
 }
 
@@ -7445,11 +7421,10 @@ impl<'a> FromNode<'a> for ParenthesizedTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawFunctionTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 64],
-    pub modifiers: *const RawModifierList,
     pub symbol: *const RawSymbol,
+    pub modifiers: *const RawModifierList,
+    pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
@@ -7469,12 +7444,12 @@ impl<'a> FunctionTypeNode<'a> {
         Node::from_raw(unsafe { std::ptr::addr_of!((*self.raw).node) })
     }
 
-    pub fn modifiers(self) -> Option<ModifierList<'a>> {
-        modifier_list_from_raw(unsafe { (*self.raw).modifiers })
-    }
-
     pub fn symbol(self) -> Option<Symbol<'a>> {
         symbol_from_raw(unsafe { (*self.raw).symbol })
+    }
+
+    pub fn modifiers(self) -> Option<ModifierList<'a>> {
+        modifier_list_from_raw(unsafe { (*self.raw).modifiers })
     }
 
     pub fn type_parameters(self) -> Option<NodeList<'a>> {
@@ -7513,11 +7488,10 @@ impl<'a> FromNode<'a> for FunctionTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawConstructorTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 64],
-    pub modifiers: *const RawModifierList,
     pub symbol: *const RawSymbol,
+    pub modifiers: *const RawModifierList,
+    pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
@@ -7537,12 +7511,12 @@ impl<'a> ConstructorTypeNode<'a> {
         Node::from_raw(unsafe { std::ptr::addr_of!((*self.raw).node) })
     }
 
-    pub fn modifiers(self) -> Option<ModifierList<'a>> {
-        modifier_list_from_raw(unsafe { (*self.raw).modifiers })
-    }
-
     pub fn symbol(self) -> Option<Symbol<'a>> {
         symbol_from_raw(unsafe { (*self.raw).symbol })
+    }
+
+    pub fn modifiers(self) -> Option<ModifierList<'a>> {
+        modifier_list_from_raw(unsafe { (*self.raw).modifiers })
     }
 
     pub fn type_parameters(self) -> Option<NodeList<'a>> {
@@ -7725,7 +7699,6 @@ impl<'a> FromNode<'a> for TemplateTail<'a> {
 #[derive(Copy, Clone)]
 pub struct RawTemplateLiteralTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub head: *const RawNode,
     pub templateSpans: *const RawNodeList,
 }
@@ -7771,7 +7744,6 @@ impl<'a> FromNode<'a> for TemplateLiteralTypeNode<'a> {
 #[derive(Copy, Clone)]
 pub struct RawTemplateLiteralTypeSpan {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub r_type: *const RawNode,
     pub literal: *const RawNode,
 }
@@ -8281,6 +8253,7 @@ impl<'a> FromNode<'a> for JsxAttribute<'a> {
 #[derive(Copy, Clone)]
 pub struct RawJsxSpreadAttribute {
     pub node: RawNode,
+    pub symbol: *const RawSymbol,
     pub expression: *const RawNode,
 }
 
@@ -8295,6 +8268,10 @@ impl<'a> JsxSpreadAttribute<'a> {
     #[inline(always)]
     pub fn as_node(self) -> Node<'a> {
         Node::from_raw(unsafe { std::ptr::addr_of!((*self.raw).node) })
+    }
+
+    pub fn symbol(self) -> Option<Symbol<'a>> {
+        symbol_from_raw(unsafe { (*self.raw).symbol })
     }
 
     pub fn expression(self) -> Option<Node<'a>> {
@@ -8538,7 +8515,6 @@ impl<'a> FromNode<'a> for JSDoc<'a> {
 #[derive(Copy, Clone)]
 pub struct RawJSDocTypeExpression {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub r_type: *const RawNode,
 }
 
@@ -8579,7 +8555,6 @@ impl<'a> FromNode<'a> for JSDocTypeExpression<'a> {
 #[derive(Copy, Clone)]
 pub struct RawJSDocNonNullableType {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub r_type: *const RawNode,
 }
 
@@ -8620,7 +8595,6 @@ impl<'a> FromNode<'a> for JSDocNonNullableType<'a> {
 #[derive(Copy, Clone)]
 pub struct RawJSDocNullableType {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub r_type: *const RawNode,
 }
 
@@ -8696,7 +8670,6 @@ impl<'a> FromNode<'a> for JSDocAllType<'a> {
 #[derive(Copy, Clone)]
 pub struct RawJSDocVariadicType {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub r_type: *const RawNode,
 }
 
@@ -8737,7 +8710,6 @@ impl<'a> FromNode<'a> for JSDocVariadicType<'a> {
 #[derive(Copy, Clone)]
 pub struct RawJSDocOptionalType {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub r_type: *const RawNode,
 }
 
@@ -9768,10 +9740,9 @@ impl<'a> FromNode<'a> for JSDocTypedefTag<'a> {
 #[derive(Copy, Clone)]
 pub struct RawJSDocSignature {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub symbol: *const RawSymbol,
+    pub _pad0: [u8; 8],
     pub _pad1: [u8; 8],
-    pub _pad2: [u8; 8],
     pub typeParameters: *const RawNodeList,
     pub parameters: *const RawNodeList,
     pub r_type: *const RawNode,
@@ -9831,7 +9802,6 @@ impl<'a> FromNode<'a> for JSDocSignature<'a> {
 #[derive(Copy, Clone)]
 pub struct RawJSDocNameReference {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub name: *const RawNode,
 }
 
@@ -9874,6 +9844,7 @@ pub struct RawSourceFile {
     pub node: RawNode,
     pub _pad0: [u8; 120],
     pub text: GoString,
+    pub _pad1: [u8; 8],
     pub statements: *const RawNodeList,
     pub endOfFileToken: *const RawNode,
 }
@@ -9922,9 +9893,9 @@ impl<'a> FromNode<'a> for SourceFile<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawModuleDeclaration {
-    pub symbol: *const RawSymbol,
     pub node: RawNode,
     pub _pad0: [u8; 8],
+    pub symbol: *const RawSymbol,
     pub localSymbol: *const RawSymbol,
     pub modifiers: *const RawModifierList,
     pub _pad1: [u8; 8],
@@ -9936,6 +9907,7 @@ pub struct RawModuleDeclaration {
     pub keyword: Kind,
     pub _pad5: [u8; 2],
     pub name: *const RawNode,
+    pub attributes: *const RawNode,
 }
 
 #[repr(transparent)]
@@ -9978,6 +9950,10 @@ impl<'a> ModuleDeclaration<'a> {
     pub fn name(self) -> Option<Node<'a>> {
         node_from_raw(unsafe { (*self.raw).name })
     }
+
+    pub fn attributes(self) -> Option<Node<'a>> {
+        node_from_raw(unsafe { (*self.raw).attributes })
+    }
 }
 
 impl<'a> FromNode<'a> for ModuleDeclaration<'a> {
@@ -9989,7 +9965,7 @@ impl<'a> FromNode<'a> for ModuleDeclaration<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(8).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -9998,9 +9974,9 @@ impl<'a> FromNode<'a> for ModuleDeclaration<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawImportEqualsDeclaration {
-    pub symbol: *const RawSymbol,
     pub node: RawNode,
     pub _pad0: [u8; 8],
+    pub symbol: *const RawSymbol,
     pub localSymbol: *const RawSymbol,
     pub modifiers: *const RawModifierList,
     pub _pad1: [u8; 4],
@@ -10057,7 +10033,7 @@ impl<'a> FromNode<'a> for ImportEqualsDeclaration<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(8).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -10066,9 +10042,9 @@ impl<'a> FromNode<'a> for ImportEqualsDeclaration<'a> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawExportDeclaration {
-    pub symbol: *const RawSymbol,
     pub node: RawNode,
     pub _pad0: [u8; 8],
+    pub symbol: *const RawSymbol,
     pub modifiers: *const RawModifierList,
     pub _pad1: [u8; 4],
     pub isTypeOnly: u8,
@@ -10125,7 +10101,7 @@ impl<'a> FromNode<'a> for ExportDeclaration<'a> {
     #[inline(always)]
     unsafe fn from_node_unchecked(node: Node<'a>) -> Self {
         Self {
-            raw: unsafe { node.raw.cast::<u8>().sub(8).cast() },
+            raw: node.raw.cast(),
             _marker: marker::PhantomData,
         }
     }
@@ -10135,10 +10111,9 @@ impl<'a> FromNode<'a> for ExportDeclaration<'a> {
 #[derive(Copy, Clone)]
 pub struct RawImportTypeNode {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub typeArguments: *const RawNodeList,
     pub isTypeOf: u8,
-    pub _pad1: [u8; 7],
+    pub _pad0: [u8; 7],
     pub argument: *const RawNode,
     pub attributes: *const RawNode,
     pub qualifier: *const RawNode,
@@ -10606,7 +10581,6 @@ impl<'a> FromNode<'a> for SyntheticReferenceExpression<'a> {
 #[derive(Copy, Clone)]
 pub struct RawJSDocTypeLiteral {
     pub node: RawNode,
-    pub _pad0: [u8; 8],
     pub symbol: *const RawSymbol,
     pub jSDocPropertyTags: GoSlice<*const RawNode>,
     pub isArrayType: u8,

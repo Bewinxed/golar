@@ -1,34 +1,36 @@
-From 7e38037691314ffd8a5c2c51fddfb5c711909218 Mon Sep 17 00:00:00 2001
+From 2b6a3b272a487c14947dc7718f3670f12e6909e5 Mon Sep 17 00:00:00 2001
 From: auvred <aauvred@gmail.com>
 Date: Wed, 25 Mar 2026 08:55:38 +0300
 Subject: [PATCH 1/3] Golar extension
 
 ---
- pkg/ast/ast.go                      | 15 +++++++++++++++
- pkg/compiler/program.go             | 30 ++++++++++++++++++++++++++++-
- pkg/diagnostics/diagnostics.go      |  9 +++++++++
- pkg/execute/incremental/snapshot.go | 11 ++++++-----
- pkg/module/resolver.go              | 21 ++++++++++++++++++++
- pkg/module/util.go                  | 10 ++++++++++
- pkg/tspath/extension.go             | 26 +++++++++++++++++++++++++
- pkg/vfs/osvfs/os.go                 |  9 +++++++--
- 8 files changed, 123 insertions(+), 8 deletions(-)
+ tsc/pkg/ast/ast.go                      | 16 +++++++++++++
+ tsc/pkg/compiler/program.go             | 32 ++++++++++++++++++++++++-
+ tsc/pkg/diagnostics/diagnostics.go      |  9 +++++++
+ tsc/pkg/execute/incremental/snapshot.go | 14 +++++++----
+ tsc/pkg/module/resolver.go              | 20 ++++++++++++++++
+ tsc/pkg/module/util.go                  | 10 ++++++++
+ tsc/pkg/outputpaths/outputpaths.go      |  4 +++-
+ tsc/pkg/tspath/extension.go             | 26 ++++++++++++++++++++
+ tsc/pkg/vfs/osvfs/os.go                 |  6 ++---
+ 9 files changed, 127 insertions(+), 10 deletions(-)
 
-diff --git a/pkg/ast/ast.go b/pkg/ast/ast.go
-index e1530e18d..33fd8f2c5 100644
---- a/pkg/ast/ast.go
-+++ b/pkg/ast/ast.go
-@@ -71,6 +71,9 @@ func NewNodeFactory(hooks NodeFactoryHooks) *NodeFactory {
+diff --git a/tsc/pkg/ast/ast.go b/tsc/pkg/ast/ast.go
+index 008b0c076f..65f93facbf 100644
+--- a/tsc/pkg/ast/ast.go
++++ b/tsc/pkg/ast/ast.go
+@@ -73,6 +73,10 @@ func NewNodeFactory(hooks NodeFactoryHooks) *NodeFactory {
  	return &NodeFactory{hooks: hooks}
  }
  
-+func NewNode(kind Kind, data nodeData) *Node {
-+	return newNode(kind, data, NodeFactoryHooks{})
++func NewNode(kind Kind, n *Node) *Node {
++	return newNode(kind, n, NodeFactoryHooks{})
 +}
- func newNode(kind Kind, data nodeData, hooks NodeFactoryHooks) *Node {
- 	n := data.AsNode()
++
+ func newNode(kind Kind, n *Node, hooks NodeFactoryHooks) *Node {
  	n.Loc = core.UndefinedTextRange()
-@@ -2471,6 +2474,10 @@ type SourceFile struct {
+ 	n.Kind = kind
+@@ -2374,6 +2378,10 @@ type SourceFile struct {
  	LocalsContainerBase
  	CompositeBase
  
@@ -37,9 +39,9 @@ index e1530e18d..33fd8f2c5 100644
 +	WrapDiagnostics         func([]*Diagnostic) []*Diagnostic
 +
  	// Fields set by NewSourceFile
- 	fileName       string // For debugging convenience
- 	parseOptions   SourceFileParseOptions
-@@ -2569,10 +2576,18 @@ func (node *SourceFile) Text() string {
+ 	fileName          tspath.RootedFilePath // For debugging convenience
+ 	parseOptions      SourceFileParseOptions
+@@ -2466,6 +2474,14 @@ func (node *SourceFile) Text() string {
  	return node.text
  }
  
@@ -47,22 +49,18 @@ index e1530e18d..33fd8f2c5 100644
 +	node.text = text
 +}
 +
- func (node *SourceFile) FileName() string {
- 	return node.parseOptions.FileName
- }
- 
 +func (node *SourceFile) SetParseOptions(opts SourceFileParseOptions) {
 +	node.parseOptions = opts
 +}
 +
- func (node *SourceFile) Path() tspath.Path {
- 	return node.parseOptions.Path
- }
-diff --git a/pkg/compiler/program.go b/pkg/compiler/program.go
-index 1436c8d0a..66f4d1249 100644
---- a/pkg/compiler/program.go
-+++ b/pkg/compiler/program.go
-@@ -266,7 +266,19 @@ func (p *Program) GetSourceFileFromReference(origin *ast.SourceFile, ref *ast.Fi
+ // OriginalText returns the untransformed source text for content-mapped files, or Text() otherwise.
+ func (node *SourceFile) OriginalText() string {
+ 	if node.ContentMapper() != "" {
+diff --git a/tsc/pkg/compiler/program.go b/tsc/pkg/compiler/program.go
+index ddc4dc659c..0d44777efb 100644
+--- a/tsc/pkg/compiler/program.go
++++ b/tsc/pkg/compiler/program.go
+@@ -311,7 +311,21 @@ func (p *Program) GetSourceFileFromReference(origin *ast.SourceFile, ref *ast.Fi
  	return nil
  }
  
@@ -76,13 +74,15 @@ index 1436c8d0a..66f4d1249 100644
  func NewProgram(opts ProgramOptions) *Program {
 +	configName := ""
 +	if opts.Config != nil && opts.Config.ConfigFile != nil && opts.Config.ConfigFile.SourceFile != nil {
-+		configName = opts.Config.ConfigFile.SourceFile.FileName()
++		configName = opts.Config.ConfigFile.SourceFile.FileName().AsString()
 +	}
-+	opts.Host = GolarExt.WrapCompilerHost(opts.Host, configName)
- 	p := &Program{opts: opts}
- 	if p.opts.Tracing != nil {
- 		defer p.opts.Tracing.Push(tracing.PhaseProgram, "createProgram", map[string]any{"configFilePath": opts.Config.CompilerOptions().ConfigFilePath}, true)()
-@@ -605,6 +617,9 @@ func (p *Program) GetSyntacticDiagnostics(ctx context.Context, sourceFile *ast.S
++	if GolarExt.WrapCompilerHost != nil {
++		opts.Host = GolarExt.WrapCompilerHost(opts.Host, configName)
++	}
+ 	p := &Program{
+ 		opts:            opts.ProgramConfig,
+ 		hosts:           opts.ProgramHosts,
+@@ -778,6 +792,9 @@ func (p *Program) GetSyntacticDiagnostics(ctx context.Context, sourceFile *ast.S
  		if ast.IsSourceFileJS(file) && !ast.IsCheckJSEnabledForFile(file, p.Options()) {
  			diags = append(diags, getAdditionalJSSyntacticDiagnostics(file, p.Options())...)
  		}
@@ -92,7 +92,7 @@ index 1436c8d0a..66f4d1249 100644
  		return diags
  	})
  }
-@@ -647,7 +662,11 @@ func (p *Program) GetBindDiagnostics(ctx context.Context, sourceFile *ast.Source
+@@ -820,7 +837,11 @@ func (p *Program) GetBindDiagnostics(ctx context.Context, sourceFile *ast.Source
  		p.BindSourceFiles()
  	}
  	return p.collectDiagnostics(ctx, sourceFile, false /*concurrent*/, func(_ context.Context, file *ast.SourceFile) []*ast.Diagnostic {
@@ -105,17 +105,17 @@ index 1436c8d0a..66f4d1249 100644
  	})
  }
  
-@@ -680,6 +699,9 @@ func (p *Program) GetIncludeProcessorDiagnostics(sourceFile *ast.SourceFile) []*
+@@ -871,6 +892,9 @@ func (p *Program) GetIncludeProcessorDiagnostics(sourceFile *ast.SourceFile) []*
  		return nil
  	}
- 	filtered, _ := p.getDiagnosticsWithPrecedingDirectives(sourceFile, p.includeProcessor.getDiagnostics(p).GetDiagnosticsForFile(sourceFile.FileName()))
+ 	filtered, _ := p.getDiagnosticsWithPrecedingDirectives(sourceFile, p.includeProcessor.getDiagnostics(p).GetDiagnosticsForFile(sourceFile))
 +	if sourceFile.WrapDiagnostics != nil {
 +		filtered = sourceFile.WrapDiagnostics(filtered)
 +	}
  	return filtered
  }
  
-@@ -1334,6 +1356,9 @@ func (p *Program) getBindAndCheckDiagnosticsWithChecker(ctx context.Context, fil
+@@ -1554,6 +1578,9 @@ func (p *Program) getBindAndCheckDiagnosticsWithChecker(ctx context.Context, fil
  
  	isPlainJS := ast.IsPlainJSFile(sourceFile, compilerOptions.CheckJs)
  	if isPlainJS {
@@ -125,21 +125,21 @@ index 1436c8d0a..66f4d1249 100644
  		return core.Filter(diags, func(d *ast.Diagnostic) bool {
  			return plainJSErrors.Has(d.Code())
  		})
-@@ -1353,6 +1378,9 @@ func (p *Program) getBindAndCheckDiagnosticsWithChecker(ctx context.Context, fil
- 			filtered = append(filtered, ast.NewDiagnostic(sourceFile, directive.Loc, diagnostics.Unused_ts_expect_error_directive))
+@@ -1574,6 +1601,9 @@ func (p *Program) getBindAndCheckDiagnosticsWithChecker(ctx context.Context, fil
  		}
  	}
+ 	filtered = applyContentMapperDiagnosticDirectives(sourceFile, filtered)
 +	if sourceFile.WrapSemanticDiagnostics != nil {
 +		filtered = sourceFile.WrapSemanticDiagnostics(filtered)
 +	}
  	return filtered
  }
  
-diff --git a/pkg/diagnostics/diagnostics.go b/pkg/diagnostics/diagnostics.go
-index ac7809a1e..b5385bf58 100644
---- a/pkg/diagnostics/diagnostics.go
-+++ b/pkg/diagnostics/diagnostics.go
-@@ -59,6 +59,15 @@ func (m *Message) ReportsUnnecessary() bool           { return m.reportsUnnecess
+diff --git a/tsc/pkg/diagnostics/diagnostics.go b/tsc/pkg/diagnostics/diagnostics.go
+index 26751d518a..61629f0ab3 100644
+--- a/tsc/pkg/diagnostics/diagnostics.go
++++ b/tsc/pkg/diagnostics/diagnostics.go
+@@ -57,6 +57,15 @@ func (m *Message) ReportsUnnecessary() bool           { return m.reportsUnnecess
  func (m *Message) ElidedInCompatibilityPyramid() bool { return m.elidedInCompatibilityPyramid }
  func (m *Message) ReportsDeprecated() bool            { return m.reportsDeprecated }
  
@@ -155,11 +155,11 @@ index ac7809a1e..b5385bf58 100644
  // For debugging only.
  func (m *Message) String() string {
  	return m.text
-diff --git a/pkg/execute/incremental/snapshot.go b/pkg/execute/incremental/snapshot.go
-index cf7b73d63..378dad6b1 100644
---- a/pkg/execute/incremental/snapshot.go
-+++ b/pkg/execute/incremental/snapshot.go
-@@ -154,12 +154,13 @@ type DiagnosticsOrBuildInfoDiagnosticsWithFileName struct {
+diff --git a/tsc/pkg/execute/incremental/snapshot.go b/tsc/pkg/execute/incremental/snapshot.go
+index afa626b5e1..414b53cdf2 100644
+--- a/tsc/pkg/execute/incremental/snapshot.go
++++ b/tsc/pkg/execute/incremental/snapshot.go
+@@ -156,11 +156,15 @@ type DiagnosticsOrBuildInfoDiagnosticsWithFileName struct {
  }
  
  func (b *buildInfoDiagnosticWithFileName) toDiagnostic(p *compiler.Program, file *ast.SourceFile) *ast.Diagnostic {
@@ -171,12 +171,14 @@ index cf7b73d63..378dad6b1 100644
  	} else if !b.noFile {
 -		fileForDiagnostic = file
 +		rawFileForDiagnostic = file
++	}
++	fileForDiagnostic := rawFileForDiagnostic
++	if compiler.GolarExt.ReportingSourceFile != nil {
++		fileForDiagnostic = compiler.GolarExt.ReportingSourceFile(rawFileForDiagnostic)
  	}
-+	fileForDiagnostic := compiler.GolarExt.ReportingSourceFile(rawFileForDiagnostic)
  
  	if b.repopulateInfo != nil {
- 		return repopulateDiagnosticChain(b, p, fileForDiagnostic)
-@@ -167,11 +168,11 @@ func (b *buildInfoDiagnosticWithFileName) toDiagnostic(p *compiler.Program, file
+@@ -169,11 +173,11 @@ func (b *buildInfoDiagnosticWithFileName) toDiagnostic(p *compiler.Program, file
  
  	var messageChain []*ast.Diagnostic
  	for _, msg := range b.messageChain {
@@ -188,13 +190,13 @@ index cf7b73d63..378dad6b1 100644
 -		relatedInformation = append(relatedInformation, info.toDiagnostic(p, fileForDiagnostic))
 +		relatedInformation = append(relatedInformation, info.toDiagnostic(p, rawFileForDiagnostic))
  	}
- 	return ast.NewDiagnosticFromSerialized(
+ 	diagnostic := ast.NewDiagnosticFromSerialized(
  		fileForDiagnostic,
-diff --git a/pkg/module/resolver.go b/pkg/module/resolver.go
-index 1fa1a51e3..aecf775db 100644
---- a/pkg/module/resolver.go
-+++ b/pkg/module/resolver.go
-@@ -1552,8 +1552,29 @@ func (r *resolutionState) tryAddingExtensions(extensionless string, extensions e
+diff --git a/tsc/pkg/module/resolver.go b/tsc/pkg/module/resolver.go
+index 6b3cbe95e1..0f2493a5c2 100644
+--- a/tsc/pkg/module/resolver.go
++++ b/tsc/pkg/module/resolver.go
+@@ -1754,8 +1754,28 @@ func (r *resolutionState) tryAddingExtensions(extensionless tspath.FileNameStem,
  				return resolved
  			}
  		}
@@ -220,15 +222,14 @@ index 1fa1a51e3..aecf775db 100644
 +				return continueSearching()
 +			}
 +		}
-+
- 		if extensions&extensionsDeclaration != 0 && !tspath.IsDeclarationFileName(extensionless+originalExtension) {
- 			if resolved := r.tryExtension(".d"+originalExtension+".ts", extensionless, false); !resolved.shouldContinueSearching() {
- 				return resolved
-diff --git a/pkg/module/util.go b/pkg/module/util.go
-index fe0e514e2..f88e5ba91 100644
---- a/pkg/module/util.go
-+++ b/pkg/module/util.go
-@@ -169,6 +169,11 @@ func GetResolutionDiagnostic(options *core.CompilerOptions, resolvedModule *Reso
+ 		if slices.Contains(r.resolver.extraExtensions, originalExtension) {
+ 			// A fully specified import of an extraExtension resolves directly to the file.
+ 			if resolved := r.tryExtension(originalExtension, extensionless, false); !resolved.shouldContinueSearching() {
+diff --git a/tsc/pkg/module/util.go b/tsc/pkg/module/util.go
+index b1349b0896..998a187e41 100644
+--- a/tsc/pkg/module/util.go
++++ b/tsc/pkg/module/util.go
+@@ -180,6 +180,11 @@ func GetResolutionDiagnostic(options *core.CompilerOptions, resolvedModule *Reso
  	case tspath.ExtensionJson:
  		return needResolveJsonModule()
  	default:
@@ -240,7 +241,7 @@ index fe0e514e2..f88e5ba91 100644
  		return needAllowArbitraryExtensions()
  	}
  }
-@@ -192,6 +197,11 @@ func TryGetJSExtensionForFile(fileName string, options *core.CompilerOptions) st
+@@ -203,6 +208,11 @@ func TryGetJSExtensionForFile(fileName string, options *core.CompilerOptions) st
  	case tspath.ExtensionDcts, tspath.ExtensionCts, tspath.ExtensionCjs:
  		return tspath.ExtensionCjs
  	default:
@@ -252,10 +253,32 @@ index fe0e514e2..f88e5ba91 100644
  		return ""
  	}
  }
-diff --git a/pkg/tspath/extension.go b/pkg/tspath/extension.go
-index 8e78809fc..25c3c4d69 100644
---- a/pkg/tspath/extension.go
-+++ b/pkg/tspath/extension.go
+diff --git a/tsc/pkg/outputpaths/outputpaths.go b/tsc/pkg/outputpaths/outputpaths.go
+index 340b69a129..54c291e6d7 100644
+--- a/tsc/pkg/outputpaths/outputpaths.go
++++ b/tsc/pkg/outputpaths/outputpaths.go
+@@ -1,6 +1,8 @@
+ package outputpaths
+ 
+ import (
++	"slices"
++
+ 	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+ 	"github.com/microsoft/TypeScript/tsc/pkg/core"
+ 	"github.com/microsoft/TypeScript/tsc/pkg/tspath"
+@@ -196,7 +198,7 @@ func ChangeToDeclarationExtension(path tspath.RootedFilePath, host OutputPathsHo
+ func changeToDeclarationExtension(path tspath.RootedFilePath) tspath.RootedFilePath {
+ 	pathWithoutExtension := path.RemoveFileExtension()
+ 	if pathWithoutExtension.AsString() == path.AsString() {
+-		if extension := path.AnyExtension(nil, tspath.CaseSensitive); extension != "" {
++		if extension := path.AnyExtension(nil, tspath.CaseSensitive); extension != "" && !slices.Contains(tspath.ExtraExtensions, extension) {
+ 			pathWithoutExtension = path.RemoveExtension(extension)
+ 		}
+ 	}
+diff --git a/tsc/pkg/tspath/extension.go b/tsc/pkg/tspath/extension.go
+index 91ca54bb5d..4916906858 100644
+--- a/tsc/pkg/tspath/extension.go
++++ b/tsc/pkg/tspath/extension.go
 @@ -22,6 +22,8 @@ const (
  )
  
@@ -299,30 +322,34 @@ index 8e78809fc..25c3c4d69 100644
  func RemoveFileExtension(path string) string {
  	// Remove any known extension even if it has more than one dot
  	for _, ext := range extensionsToRemove {
-@@ -134,6 +157,9 @@ func GetDeclarationEmitExtensionForPath(path string) string {
+@@ -148,6 +171,9 @@ func GetDeclarationEmitExtensionForPath(path string) string {
  		return ExtensionDts
  	default:
- 		ext := GetAnyExtensionFromPath(path, nil, false)
+ 		ext := GetAnyExtensionFromPath(path, nil, CaseSensitive)
 +		if slices.Contains(ExtraExtensions, ext) {
 +			return ExtensionDts
 +		}
  		if ext != "" {
  			return ".d" + ext + ".ts"
  		}
-diff --git a/pkg/vfs/osvfs/os.go b/pkg/vfs/osvfs/os.go
-index 1bf3b5b58..a8bbe8a4a 100644
---- a/pkg/vfs/osvfs/os.go
-+++ b/pkg/vfs/osvfs/os.go
-@@ -58,9 +58,14 @@ var isFileSystemCaseSensitive = func() bool {
+diff --git a/tsc/pkg/vfs/osvfs/os.go b/tsc/pkg/vfs/osvfs/os.go
+index fc5ed0e5ff..36771eb602 100644
+--- a/tsc/pkg/vfs/osvfs/os.go
++++ b/tsc/pkg/vfs/osvfs/os.go
+@@ -12,7 +12,6 @@ import (
+ 
+ 	"github.com/microsoft/TypeScript/tsc/pkg/core"
+ 	"github.com/microsoft/TypeScript/tsc/pkg/nativepath"
+-	"github.com/microsoft/TypeScript/tsc/pkg/osutil"
+ 	"github.com/microsoft/TypeScript/tsc/pkg/tspath"
+ 	"github.com/microsoft/TypeScript/tsc/pkg/vfs"
+ 	"github.com/microsoft/TypeScript/tsc/pkg/vfs/internal"
+@@ -58,9 +57,10 @@ var fileSystemCaseSensitivity = func() tspath.CaseSensitivity {
  	// As a proxy for case-insensitivity, we check if the current executable exists under a different case.
  	// This is not entirely correct, since different OSs can have differing case sensitivity in different paths,
  	// but this is largely good enough for our purposes (and what sys.ts used to do with __filename).
--	exe, err := os.Executable()
-+	// exe, err := os.Executable()
-+	// if err != nil {
-+	// 	panic(fmt.Sprintf("vfs: failed to get executable path: %v", err))
-+	// }
-+	// Golar: os.Executable() doesn't work on macOS when compiled to addon
+-	exe, err := osutil.Executable()
++	// Golar's Node addon uses the current directory to probe case sensitivity.
 +	exe, err := os.Getwd()
  	if err != nil {
 -		panic(fmt.Sprintf("vfs: failed to get executable path: %v", err))
@@ -331,5 +358,5 @@ index 1bf3b5b58..a8bbe8a4a 100644
  
  	// If the current executable exists under a different case, we must be case-insensitive.
 -- 
-2.53.0
+2.54.0
 

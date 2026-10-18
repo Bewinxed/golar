@@ -1,16 +1,22 @@
 package utils
 
 import (
-	"github.com/microsoft/typescript-go/pkg/ast"
-	"github.com/microsoft/typescript-go/pkg/compiler"
+	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+	"github.com/microsoft/TypeScript/tsc/pkg/compiler"
+	"github.com/microsoft/TypeScript/tsc/pkg/tspath"
 )
 
 type IndexedCompilerHost struct {
 	compiler.CompilerHost
+	currentDirectory tspath.RootedDirectoryPath
 }
 
-func NewIndexedCompilerHost(base compiler.CompilerHost) compiler.CompilerHost {
-	return &IndexedCompilerHost{CompilerHost: base}
+func NewIndexedCompilerHost(base compiler.CompilerHost, currentDirectory tspath.RootedDirectoryPath) compiler.CompilerHost {
+	return &IndexedCompilerHost{CompilerHost: base, currentDirectory: currentDirectory}
+}
+
+func (h *IndexedCompilerHost) GetCurrentDirectory() tspath.RootedDirectoryPath {
+	return h.currentDirectory
 }
 
 func (h *IndexedCompilerHost) GetSourceFile(opts ast.SourceFileParseOptions) *ast.SourceFile {

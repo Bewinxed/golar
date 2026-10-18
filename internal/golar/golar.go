@@ -9,21 +9,22 @@ import (
 	"github.com/auvred/golar/internal/utils"
 	"github.com/zeebo/xxh3"
 
-	"github.com/microsoft/typescript-go/pkg/ast"
-	"github.com/microsoft/typescript-go/pkg/collections"
-	"github.com/microsoft/typescript-go/pkg/compiler"
-	"github.com/microsoft/typescript-go/pkg/core"
-	"github.com/microsoft/typescript-go/pkg/diagnostics"
-	"github.com/microsoft/typescript-go/pkg/parser"
-	"github.com/microsoft/typescript-go/pkg/tspath"
+	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+	"github.com/microsoft/TypeScript/tsc/pkg/collections"
+	"github.com/microsoft/TypeScript/tsc/pkg/compiler"
+	"github.com/microsoft/TypeScript/tsc/pkg/core"
+	"github.com/microsoft/TypeScript/tsc/pkg/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/pkg/parser"
+	"github.com/microsoft/TypeScript/tsc/pkg/tspath"
 )
 
 var pluginErrorDiagnostic = diagnostics.NewMessage(1_000_000, diagnostics.CategoryError, "plugin_error_diagnostic", "{0}")
 
 type compilerHostProxy struct {
 	compiler.CompilerHost
-	configName      string
-	sourceFileCache *collections.SyncMap[xxh3.Uint128, *ast.SourceFile]
+	configName       string
+	currentDirectory string
+	sourceFileCache  *collections.SyncMap[xxh3.Uint128, *ast.SourceFile]
 }
 
 type languageData struct {
@@ -49,10 +50,11 @@ func (h *compilerHostProxy) GetSourceFile(opts ast.SourceFileParseOptions) *ast.
 	}
 
 	var hash xxh3.Hasher128
-	hash.WriteString(opts.FileName)
-	hash.WriteString(string(opts.Path))
+	hash.WriteString(opts.FileName.AsString())
+	hash.WriteString(opts.PathKey.AsString())
 	hash.Write([]byte{bool2byte(opts.ExternalModuleIndicatorOptions.JSX)<<1 | bool2byte(opts.ExternalModuleIndicatorOptions.Force)})
 	hash.WriteString(h.configName)
+	hash.WriteString(h.currentDirectory)
 
 	key := hash.Sum128()
 
@@ -72,11 +74,12 @@ func (h *compilerHostProxy) GetSourceFile(opts ast.SourceFileParseOptions) *ast.
 	return sourceFile
 }
 
-func NewCompilerHost(base compiler.CompilerHost, configName string, sourceFileCache *collections.SyncMap[xxh3.Uint128, *ast.SourceFile]) compiler.CompilerHost {
+func NewCompilerHost(base compiler.CompilerHost, configName string, currentDirectory string, sourceFileCache *collections.SyncMap[xxh3.Uint128, *ast.SourceFile]) compiler.CompilerHost {
 	return &compilerHostProxy{
-		CompilerHost:    base,
-		configName:      configName,
-		sourceFileCache: sourceFileCache,
+		CompilerHost:     base,
+		configName:       configName,
+		currentDirectory: currentDirectory,
+		sourceFileCache:  sourceFileCache,
 	}
 }
 
@@ -96,12 +99,12 @@ func RegisterCodegenPlugin(plugin tscodegenplugin.Plugin) {
 }
 
 func (h *compilerHostProxy) parseFile(opts ast.SourceFileParseOptions, sourceText string, scriptKind core.ScriptKind) *ast.SourceFile {
-	ext := filepath.Ext(opts.FileName)
+	ext := filepath.Ext(opts.FileName.AsString())
 	if plugin, ok := pluginByExtension[ext]; ok {
 		resp := plugin.CreateServiceCode(tscodegenplugin.CreateServiceCodeRequest{
-			Cwd:            h.GetCurrentDirectory(),
+			Cwd:            h.currentDirectory,
 			ConfigFileName: h.configName,
-			FileName:       opts.FileName,
+			FileName:       opts.FileName.AsString(),
 			SourceText:     sourceText,
 		})
 		if resp.Errors != nil {
@@ -153,7 +156,7 @@ func ServiceToSource(file *ast.SourceFile, loc core.TextRange) (core.TextRange, 
 }
 
 func ReportingSourceFile(file *ast.SourceFile) *ast.SourceFile {
-	if file.GolarLanguageData == nil {
+	if file == nil || file.GolarLanguageData == nil {
 		return file
 	}
 
@@ -293,11 +296,11 @@ func positionToService(file *ast.SourceFile, pos int) int {
 }
 
 func init() {
-	compiler.GolarExt.WrapCompilerHost = func(base compiler.CompilerHost, configName string) compiler.CompilerHost {
+	compiler.GolarExt.WrapCompilerHost = func(base compiler.CompilerHost, configName string, currentDirectory string) compiler.CompilerHost {
 		if _, ok := base.(*utils.IndexedCompilerHost); ok {
 			return base
 		}
-		return utils.NewIndexedCompilerHost(NewCompilerHost(base, configName, nil))
+		return utils.NewIndexedCompilerHost(NewCompilerHost(base, configName, currentDirectory, nil), tspath.RootedDirectoryPathFromNormalized(currentDirectory))
 	}
 	compiler.GolarExt.ReportingSourceFile = ReportingSourceFile
 }

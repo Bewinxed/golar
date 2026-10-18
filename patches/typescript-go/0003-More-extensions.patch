@@ -1,22 +1,24 @@
-From de5c287baf6fd3a4b320c4b3bebee2c8c1d345c4 Mon Sep 17 00:00:00 2001
+From 179cc9c9dfd82586544c580016de0c75b66b37af Mon Sep 17 00:00:00 2001
 From: auvred <aauvred@gmail.com>
 Date: Mon, 9 Mar 2026 10:37:15 +0300
 Subject: [PATCH 3/3] More extensions
 
 ---
- .../src/api/node/node.generated.ts            |  9 ++++++++
- .../native-preview/src/api/node/protocol.ts   |  3 ++-
- _scripts/generate-encoder.ts                  | 21 +++++++++++++------
- pkg/api/encoder/encoder.go                    | 12 +++++++----
- pkg/ast/ast.go                                |  8 ++++++-
- pkg/ast/utilities.go                          | 20 ++++++++++--------
- 6 files changed, 52 insertions(+), 21 deletions(-)
+ .../typescript/src/api/node/node.generated.ts |  9 +++++++++
+ packages/typescript/src/api/node/protocol.ts  |  3 ++-
+ tools/scripts/tsc/generate-encoder.ts         | 13 ++++++++++--
+ tsc/pkg/api/encoder/encoder.go                | 12 +++++++----
+ tsc/pkg/ast/ast.go                            | 20 ++++++++++++-------
+ tsc/pkg/compiler/program.go                   |  4 ++--
+ tsc/pkg/module/resolver.go                    |  2 +-
+ tsc/pkg/tspath/extension.go                   |  1 +
+ 8 files changed, 47 insertions(+), 17 deletions(-)
 
-diff --git a/_packages/native-preview/src/api/node/node.generated.ts b/_packages/native-preview/src/api/node/node.generated.ts
-index ff74677b3..915251b8c 100644
---- a/_packages/native-preview/src/api/node/node.generated.ts
-+++ b/_packages/native-preview/src/api/node/node.generated.ts
-@@ -32,6 +32,7 @@ import {
+diff --git a/packages/typescript/src/api/node/node.generated.ts b/packages/typescript/src/api/node/node.generated.ts
+index 0f69dbc63a..7757ed29ad 100644
+--- a/packages/typescript/src/api/node/node.generated.ts
++++ b/packages/typescript/src/api/node/node.generated.ts
+@@ -35,6 +35,7 @@ import {
      NODE_OFFSET_KIND,
      NODE_OFFSET_NEXT,
      NODE_OFFSET_PARENT,
@@ -24,7 +26,7 @@ index ff74677b3..915251b8c 100644
      NODE_OFFSET_POS,
  } from "./protocol.ts";
  
-@@ -920,4 +921,12 @@ export class RemoteNode extends RemoteNodeBase implements Node {
+@@ -976,4 +977,12 @@ export class RemoteNode extends RemoteNodeBase implements Node {
          }
          return flags;
      }
@@ -37,20 +39,20 @@ index ff74677b3..915251b8c 100644
 +        return this.view.getUint32(this._byteIndex + NODE_OFFSET_POINTER, true);
 +    }
  }
-diff --git a/_packages/native-preview/src/api/node/protocol.ts b/_packages/native-preview/src/api/node/protocol.ts
-index b21098cc2..70ec52971 100644
---- a/_packages/native-preview/src/api/node/protocol.ts
-+++ b/_packages/native-preview/src/api/node/protocol.ts
-@@ -13,7 +13,7 @@ export const HEADER_OFFSET_STRUCTURED_DATA = 36;
- export const HEADER_OFFSET_NODES = 40;
- export const HEADER_SIZE = 44;
+diff --git a/packages/typescript/src/api/node/protocol.ts b/packages/typescript/src/api/node/protocol.ts
+index 9218b00d13..50bf4c266f 100644
+--- a/packages/typescript/src/api/node/protocol.ts
++++ b/packages/typescript/src/api/node/protocol.ts
+@@ -16,7 +16,7 @@ export const HEADER_OFFSET_SOURCE_FILE_LEASE = 52;
+ export const HEADER_OFFSET_BINDER_DATA = 60;
+ export const HEADER_SIZE = 64;
  
 -export const NODE_LEN = 28;
 +export const NODE_LEN = 36;
  
  export const NODE_OFFSET_KIND = 0;
  export const NODE_OFFSET_POS = 4;
-@@ -22,6 +22,7 @@ export const NODE_OFFSET_NEXT = 12;
+@@ -25,6 +25,7 @@ export const NODE_OFFSET_NEXT = 12;
  export const NODE_OFFSET_PARENT = 16;
  export const NODE_OFFSET_DATA = 20;
  export const NODE_OFFSET_FLAGS = 24;
@@ -58,40 +60,22 @@ index b21098cc2..70ec52971 100644
  
  export const KIND_NODE_LIST = 0xFFFFFFFF;
  
-diff --git a/_scripts/generate-encoder.ts b/_scripts/generate-encoder.ts
-index caddf3356..01fe29dec 100644
---- a/_scripts/generate-encoder.ts
-+++ b/_scripts/generate-encoder.ts
+diff --git a/tools/scripts/tsc/generate-encoder.ts b/tools/scripts/tsc/generate-encoder.ts
+index 1b106bb8ff..ea32d33f31 100644
+--- a/tools/scripts/tsc/generate-encoder.ts
++++ b/tools/scripts/tsc/generate-encoder.ts
 @@ -5,8 +5,8 @@
-  * Usage: node --experimental-strip-types _scripts/generate-encoder.ts
+  * Usage: node tools/scripts/tsc/generate-encoder.ts
   *
   * Generates:
 - *   - internal/api/encoder/encoder_generated.go
 - *   - internal/api/encoder/decoder_generated.go
 + *   - pkg/api/encoder/encoder_generated.go
 + *   - pkg/api/encoder/decoder_generated.go
-  *   - _packages/native-preview/src/api/node/protocol.generated.ts
+  *   - packages/typescript/src/api/node/protocol.generated.ts
   */
  
-@@ -349,7 +349,7 @@ function generateGoEncoder(): string {
-     w.push();
-     w.write('"fmt"');
-     w.write("");
--    w.write('"github.com/microsoft/typescript-go/internal/ast"');
-+    w.write('"github.com/microsoft/typescript-go/pkg/ast"');
-     w.pop();
-     w.write(")");
-     w.write("");
-@@ -596,7 +596,7 @@ function generateGoDecoder(): string {
-     w.push();
-     w.write('"fmt"');
-     w.write("");
--    w.write('"github.com/microsoft/typescript-go/internal/ast"');
-+    w.write('"github.com/microsoft/typescript-go/pkg/ast"');
-     w.pop();
-     w.write(")");
-     w.write("");
-@@ -1495,6 +1495,7 @@ function emitNodeGeneratedImports(w: CodeWriter) {
+@@ -1500,6 +1500,7 @@ function emitNodeGeneratedImports(w: CodeWriter) {
      w.write(`    NODE_OFFSET_NEXT,`);
      w.write(`    NODE_OFFSET_PARENT,`);
      w.write(`    NODE_OFFSET_POS,`);
@@ -99,7 +83,7 @@ index caddf3356..01fe29dec 100644
      w.write(`} from "./protocol.ts";`);
      w.write(`import {`);
      w.write(`    type NodeDataType,`);
-@@ -1966,6 +1967,14 @@ function emitRemoteNodeClassClose(w: CodeWriter) {
+@@ -2038,6 +2039,14 @@ function emitRemoteNodeClassClose(w: CodeWriter) {
      w.write(`        }`);
      w.write(`        return flags;`);
      w.write(`    }`);
@@ -114,27 +98,10 @@ index caddf3356..01fe29dec 100644
      w.write(`}`);
  }
  
-@@ -1990,14 +1999,14 @@ export default function main() {
- 
-     const goEncoder = generateGoEncoder();
-     writeAndFormat(
--        path.join(ROOT, "internal/api/encoder/encoder_generated.go"),
-+        path.join(ROOT, "pkg/api/encoder/encoder_generated.go"),
-         goEncoder + "\n",
-         "dprint fmt",
-     );
- 
-     const goDecoder = generateGoDecoder();
-     writeAndFormat(
--        path.join(ROOT, "internal/api/encoder/decoder_generated.go"),
-+        path.join(ROOT, "pkg/api/encoder/decoder_generated.go"),
-         goDecoder + "\n",
-         "dprint fmt",
-     );
-diff --git a/pkg/api/encoder/encoder.go b/pkg/api/encoder/encoder.go
-index a201235c8..3d1370549 100644
---- a/pkg/api/encoder/encoder.go
-+++ b/pkg/api/encoder/encoder.go
+diff --git a/tsc/pkg/api/encoder/encoder.go b/tsc/pkg/api/encoder/encoder.go
+index e5c7897e45..db993e83ae 100644
+--- a/tsc/pkg/api/encoder/encoder.go
++++ b/tsc/pkg/api/encoder/encoder.go
 @@ -1,5 +1,7 @@
  package encoder
  
@@ -143,7 +110,7 @@ index a201235c8..3d1370549 100644
  import (
  	"cmp"
  	"encoding/binary"
-@@ -26,8 +28,9 @@ const (
+@@ -27,8 +29,9 @@ const (
  	NodeOffsetParent
  	NodeOffsetData
  	NodeOffsetFlags
@@ -154,16 +121,16 @@ index a201235c8..3d1370549 100644
  )
  
  const (
-@@ -485,7 +488,7 @@ func encodeTree(rootNode *ast.Node, sourceFile *ast.SourceFile) ([]byte, *NodeIn
+@@ -521,7 +524,7 @@ func encodeTree(rootNode *ast.Node, sourceFile *ast.SourceFile) ([]byte, *NodeIn
  					nodes[prevIndex*NodeSize+NodeOffsetNext+3] = b3
  				}
  
--				nodes = appendUint32s(nodes, SyntaxKindNodeList, utf16(nodeList.Pos()), utf16(nodeList.End()), 0, parentIndex, uint32(len(nodeList.Nodes)), 0)
-+				nodes = appendUint32s(nodes, SyntaxKindNodeList, utf16(nodeList.Pos()), utf16(nodeList.End()), 0, parentIndex, uint32(len(nodeList.Nodes)), 0, 0, 0)
+-				nodes = appendUint32s(nodes, SyntaxKindNodeList, utf16(nodeList.Pos()), utf16(nodeList.End()), 0, parentIndex, uint32(len(nodeList.Nodes)), uint32(boolToByte(nodeList.HasTrailingComma())))
++				nodes = appendUint32s(nodes, SyntaxKindNodeList, utf16(nodeList.Pos()), utf16(nodeList.End()), 0, parentIndex, uint32(len(nodeList.Nodes)), uint32(boolToByte(nodeList.HasTrailingComma())), 0, 0)
  
  				saveParentIndex := parentIndex
  
-@@ -519,6 +522,7 @@ func encodeTree(rootNode *ast.Node, sourceFile *ast.SourceFile) ([]byte, *NodeIn
+@@ -555,6 +558,7 @@ func encodeTree(rootNode *ast.Node, sourceFile *ast.SourceFile) ([]byte, *NodeIn
  		}
  
  		nodes = appendUint32s(nodes, uint32(node.Kind), utf16(node.Pos()), utf16(node.End()), 0, parentIndex, getNodeData(node, strs, positionMap, &extendedData, &structuredData), uint32(node.Flags))
@@ -171,7 +138,7 @@ index a201235c8..3d1370549 100644
  
  		if nodeIndexMap != nil {
  			if _, ok := nodeIndexMap[node]; ok {
-@@ -542,14 +546,14 @@ func encodeTree(rootNode *ast.Node, sourceFile *ast.SourceFile) ([]byte, *NodeIn
+@@ -578,14 +582,14 @@ func encodeTree(rootNode *ast.Node, sourceFile *ast.SourceFile) ([]byte, *NodeIn
  		return node
  	}
  
@@ -188,24 +155,41 @@ index a201235c8..3d1370549 100644
  
  	visitor.VisitEachChild(rootNode)
  	if sourceFile != nil {
-diff --git a/pkg/ast/ast.go b/pkg/ast/ast.go
-index b53e16af8..9a5b94410 100644
---- a/pkg/ast/ast.go
-+++ b/pkg/ast/ast.go
-@@ -183,9 +183,11 @@ type Node struct {
- 	Kind   Kind
- 	Flags  NodeFlags
- 	Loc    core.TextRange
+diff --git a/tsc/pkg/ast/ast.go b/tsc/pkg/ast/ast.go
+index 65f93facbf..98e1f3f033 100644
+--- a/tsc/pkg/ast/ast.go
++++ b/tsc/pkg/ast/ast.go
+@@ -73,8 +73,8 @@ func NewNodeFactory(hooks NodeFactoryHooks) *NodeFactory {
+ 	return &NodeFactory{hooks: hooks}
+ }
+ 
+-func NewNode(kind Kind, n *Node) *Node {
+-	return newNode(kind, n, NodeFactoryHooks{})
++func NewNode(kind Kind, node interface{ AsNode() *Node }) *Node {
++	return newNode(kind, node.AsNode(), NodeFactoryHooks{})
+ }
+ 
+ func newNode(kind Kind, n *Node, hooks NodeFactoryHooks) *Node {
+@@ -180,11 +180,13 @@ func (list *ModifierList) Clone(f *NodeFactory) *ModifierList {
+ // enclosing allocation, which generated accessors recover without a data pointer.
+ 
+ type Node struct {
+-	Kind   Kind
+-	Flags  NodeFlags
+-	Loc    core.TextRange
 -	id     atomic.Uint64
- 	Parent *Node
- 	data   nodeData
-+
+-	Parent *Node
++	Kind         Kind
++	Flags        NodeFlags
++	Loc          core.TextRange
++	id           atomic.Uint64
++	Parent       *Node
 +	SourceFileId uint32
 +	Id           uint32
  }
  
- func (n *Node) Data() nodeData {
-@@ -2478,6 +2480,7 @@ type SourceFile struct {
+ // Shared node accessors dispatch on Kind to the enclosing concrete node.
+@@ -2378,6 +2380,7 @@ type SourceFile struct {
  	LocalsContainerBase
  	CompositeBase
  
@@ -213,52 +197,65 @@ index b53e16af8..9a5b94410 100644
  	GolarLanguageData       any
  	WrapSemanticDiagnostics func([]*Diagnostic) []*Diagnostic
  	WrapDiagnostics         func([]*Diagnostic) []*Diagnostic
-@@ -2558,11 +2561,14 @@ type SourceFile struct {
+@@ -2456,8 +2459,11 @@ type SourceFile struct {
  	positionMap     *PositionMap
  }
  
 +var sourceFileId atomic.Uint32
 +
  func (f *NodeFactory) NewSourceFile(opts SourceFileParseOptions, text string, statements *NodeList, endOfFileToken *TokenNode) *Node {
- 	if tspath.GetEncodedRootLength(opts.FileName) == 0 || opts.FileName != tspath.NormalizePath(opts.FileName) {
- 		panic(fmt.Sprintf("fileName should be normalized and absolute: %q", opts.FileName))
- 	}
  	data := &SourceFile{}
 +	data.Id = sourceFileId.Add(1)
  	data.fileName = opts.FileName
  	data.parseOptions = opts
  	data.text = text
-diff --git a/pkg/ast/utilities.go b/pkg/ast/utilities.go
-index 9cf3cabdb..b4ad0c846 100644
---- a/pkg/ast/utilities.go
-+++ b/pkg/ast/utilities.go
-@@ -20,15 +20,17 @@ var (
- )
- 
- func GetNodeId(node *Node) NodeId {
--	id := node.id.Load()
--	if id == 0 {
--		// Worst case, we burn a few ids if we have to CAS.
--		id = nextNodeId.Add(1)
--		if !node.id.CompareAndSwap(0, id) {
--			id = node.id.Load()
--		}
--	}
--	return NodeId(id)
-+	return NodeId(node.Id)
-+	// panic("nope, we don't want to support this here")
-+	// id := node.id.Load()
-+	// if id == 0 {
-+	// 	// Worst case, we burn a few ids if we have to CAS.
-+	// 	id = nextNodeId.Add(1)
-+	// 	if !node.id.CompareAndSwap(0, id) {
-+	// 		id = node.id.Load()
-+	// 	}
-+	// }
-+	// return NodeId(id)
+diff --git a/tsc/pkg/compiler/program.go b/tsc/pkg/compiler/program.go
+index 0d44777efb..72165ab9db 100644
+--- a/tsc/pkg/compiler/program.go
++++ b/tsc/pkg/compiler/program.go
+@@ -312,7 +312,7 @@ func (p *Program) GetSourceFileFromReference(origin *ast.SourceFile, ref *ast.Fi
  }
  
- func GetSymbolId(symbol *Symbol) SymbolId {
+ type golarExt struct {
+-	WrapCompilerHost    func(base CompilerHost, configName string) CompilerHost
++	WrapCompilerHost    func(base CompilerHost, configName string, currentDirectory string) CompilerHost
+ 	ReportingSourceFile func(file *ast.SourceFile) *ast.SourceFile
+ }
+ 
+@@ -324,7 +324,7 @@ func NewProgram(opts ProgramOptions) *Program {
+ 		configName = opts.Config.ConfigFile.SourceFile.FileName().AsString()
+ 	}
+ 	if GolarExt.WrapCompilerHost != nil {
+-		opts.Host = GolarExt.WrapCompilerHost(opts.Host, configName)
++		opts.Host = GolarExt.WrapCompilerHost(opts.Host, configName, opts.Config.BaseDirectory().AsString())
+ 	}
+ 	p := &Program{
+ 		opts:            opts.ProgramConfig,
+diff --git a/tsc/pkg/module/resolver.go b/tsc/pkg/module/resolver.go
+index 0f2493a5c2..40057b195d 100644
+--- a/tsc/pkg/module/resolver.go
++++ b/tsc/pkg/module/resolver.go
+@@ -1765,7 +1765,7 @@ func (r *resolutionState) tryAddingExtensions(extensionless tspath.FileNameStem,
+ 	default:
+ 		for _, e := range tspath.ExtraExtensions {
+ 			if e == originalExtension {
+-				if extensions&extensionsDeclaration != 0 && !tspath.IsDeclarationFileName(extensionless+originalExtension) {
++				if extensions&extensionsDeclaration != 0 && !extensionless.AppendSuffix(originalExtension).IsDeclarationFile() {
+ 					if resolved := r.tryExtension(".d"+originalExtension+".ts", extensionless, false); !resolved.shouldContinueSearching() {
+ 						return resolved
+ 					}
+diff --git a/tsc/pkg/tspath/extension.go b/tsc/pkg/tspath/extension.go
+index 4916906858..e8f2af59d0 100644
+--- a/tsc/pkg/tspath/extension.go
++++ b/tsc/pkg/tspath/extension.go
+@@ -61,6 +61,7 @@ var extensionsToRemove = []string{ExtensionDts, ExtensionDmts, ExtensionDcts, Ex
+ func RegisterExtensionToRemove(ext string) {
+ 	extensionsToRemove = append(extensionsToRemove, ext)
+ }
++
+ func ShouldRemoveExtension(ext string) bool {
+ 	return slices.Contains(extensionsToRemove, ext)
+ }
 -- 
-2.53.0
+2.54.0
 

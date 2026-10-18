@@ -3,7 +3,7 @@ package mapping
 import (
 	"slices"
 
-	"github.com/microsoft/typescript-go/pkg/collections"
+	"github.com/microsoft/TypeScript/tsc/pkg/collections"
 )
 
 type CodeRangeKey int

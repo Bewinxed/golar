@@ -2,10 +2,10 @@ package rule
 
 import (
 	"github.com/auvred/golar/internal/utils"
-	"github.com/microsoft/typescript-go/pkg/ast"
-	"github.com/microsoft/typescript-go/pkg/checker"
-	"github.com/microsoft/typescript-go/pkg/compiler"
-	"github.com/microsoft/typescript-go/pkg/core"
+	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+	"github.com/microsoft/TypeScript/tsc/pkg/checker"
+	"github.com/microsoft/TypeScript/tsc/pkg/compiler"
+	"github.com/microsoft/TypeScript/tsc/pkg/core"
 )
 
 type Report struct {

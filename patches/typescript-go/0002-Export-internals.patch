@@ -1,60 +1,18 @@
-From d618b50eb92f64ab4c067eb4c2650099594ad2de Mon Sep 17 00:00:00 2001
+From 49bbe85cffd23c9bf77f7cdb4730eabcbf6cc701 Mon Sep 17 00:00:00 2001
 From: auvred <aauvred@gmail.com>
 Date: Fri, 6 Mar 2026 13:17:31 +0300
 Subject: [PATCH 2/3] Export internals
 
 ---
- pkg/ast/ast.go         |  4 ++++
- pkg/ast/ids.go         |  2 +-
- pkg/checker/checker.go |  2 +-
- pkg/checker/exports.go | 12 ++++++++++++
- 4 files changed, 18 insertions(+), 2 deletions(-)
+ tsc/pkg/checker/exports.go | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-diff --git a/pkg/ast/ast.go b/pkg/ast/ast.go
-index 33fd8f2c5..b53e16af8 100644
---- a/pkg/ast/ast.go
-+++ b/pkg/ast/ast.go
-@@ -188,6 +188,10 @@ type Node struct {
- 	data   nodeData
- }
- 
-+func (n *Node) Data() nodeData {
-+	return n.data
-+}
-+
- // Node accessors. Some accessors are implemented as methods on NodeData, others are implemented though
- // type switches. Either approach is fine. Interface methods are likely more performant, but have higher
- // code size costs because we have hundreds of implementations of the NodeData interface.
-diff --git a/pkg/ast/ids.go b/pkg/ast/ids.go
-index 63e415deb..482ee0c24 100644
---- a/pkg/ast/ids.go
-+++ b/pkg/ast/ids.go
-@@ -2,5 +2,5 @@ package ast
- 
- type (
- 	NodeId   uint64
--	SymbolId uint64
-+	SymbolId uint32
- )
-diff --git a/pkg/checker/checker.go b/pkg/checker/checker.go
-index 3ad555491..2e7731b53 100644
---- a/pkg/checker/checker.go
-+++ b/pkg/checker/checker.go
-@@ -17332,7 +17332,7 @@ func (b *keyBuilder) writeInt(value int) {
- }
- 
- func (b *keyBuilder) writeSymbol(s *ast.Symbol) {
--	hashWrite64(&b.h, ast.GetSymbolId(s))
-+	hashWrite32(&b.h, ast.GetSymbolId(s))
- }
- 
- func (b *keyBuilder) writeType(t *Type) {
-diff --git a/pkg/checker/exports.go b/pkg/checker/exports.go
-index 93c42c070..228a8b633 100644
---- a/pkg/checker/exports.go
-+++ b/pkg/checker/exports.go
-@@ -6,6 +6,14 @@ import (
- 	"github.com/microsoft/typescript-go/pkg/diagnostics"
+diff --git a/tsc/pkg/checker/exports.go b/tsc/pkg/checker/exports.go
+index 44c2bb9019..5f08d3a6f0 100644
+--- a/tsc/pkg/checker/exports.go
++++ b/tsc/pkg/checker/exports.go
+@@ -5,6 +5,14 @@ import (
+ 	"github.com/microsoft/TypeScript/tsc/pkg/diagnostics"
  )
  
 +func (c *Checker) IsArrayOrTupleType(t *Type) bool {
@@ -68,7 +26,7 @@ index 93c42c070..228a8b633 100644
  func (c *Checker) GetStringType() *Type {
  	return c.stringType
  }
-@@ -125,6 +133,10 @@ func (c *Checker) GetPropertyOfType(t *Type, name string) *ast.Symbol {
+@@ -156,6 +164,10 @@ func (c *Checker) GetPropertyOfType(t *Type, name string) *ast.Symbol {
  	return c.getPropertyOfType(t, name)
  }
  
@@ -80,5 +38,5 @@ index 93c42c070..228a8b633 100644
  	return c.typeHasCallOrConstructSignatures(t)
  }
 -- 
-2.53.0
+2.54.0
 

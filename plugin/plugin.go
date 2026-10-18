@@ -7,9 +7,9 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/microsoft/typescript-go/pkg/core"
-	"github.com/microsoft/typescript-go/pkg/scanner"
-	"github.com/microsoft/typescript-go/pkg/sourcemap"
+	"github.com/microsoft/TypeScript/tsc/pkg/core"
+	"github.com/microsoft/TypeScript/tsc/pkg/scanner"
+	"github.com/microsoft/TypeScript/tsc/pkg/sourcemap"
 )
 
 type ServiceCodeError struct {

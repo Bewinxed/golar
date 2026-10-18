@@ -10,9 +10,9 @@ import (
 	"github.com/auvred/golar/internal/golar"
 	"github.com/auvred/golar/internal/linter"
 	"github.com/auvred/golar/internal/linter/rule"
-	"github.com/microsoft/typescript-go/pkg/ast"
-	"github.com/microsoft/typescript-go/pkg/scanner"
-	"github.com/microsoft/typescript-go/pkg/tspath"
+	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+	"github.com/microsoft/TypeScript/tsc/pkg/scanner"
+	"github.com/microsoft/TypeScript/tsc/pkg/tspath"
 )
 
 type LintConfigRule struct {
@@ -33,15 +33,12 @@ type LintConfig struct {
 
 func (w *Workspace) reportFileName(file *ast.SourceFile) string {
 	if w.reportBaseDir == "" {
-		return file.FileName()
+		return file.FileName().AsString()
 	}
 
-	relative := tspath.GetRelativePathFromDirectory(w.reportBaseDir, file.FileName(), tspath.ComparePathsOptions{
-		CurrentDirectory:          w.reportBaseDir,
-		UseCaseSensitiveFileNames: w.pathCaseSensitive,
-	})
+	relative := tspath.GetRelativePathFromDirectory(w.reportBaseDir, file.FileName().AsString(), w.pathCaseSensitivity)
 	if relative == "" {
-		return file.FileName()
+		return file.FileName().AsString()
 	}
 
 	return relative

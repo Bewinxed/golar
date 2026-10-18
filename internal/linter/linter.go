@@ -11,14 +11,15 @@ import (
 
 	"github.com/auvred/golar/internal/linter/rule"
 
-	"github.com/microsoft/typescript-go/pkg/ast"
-	"github.com/microsoft/typescript-go/pkg/bundled"
-	"github.com/microsoft/typescript-go/pkg/checker"
-	"github.com/microsoft/typescript-go/pkg/compiler"
-	"github.com/microsoft/typescript-go/pkg/core"
-	"github.com/microsoft/typescript-go/pkg/tsoptions"
-	"github.com/microsoft/typescript-go/pkg/vfs"
-	"github.com/microsoft/typescript-go/pkg/vfs/vfstest"
+	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+	"github.com/microsoft/TypeScript/tsc/pkg/bundled"
+	"github.com/microsoft/TypeScript/tsc/pkg/checker"
+	"github.com/microsoft/TypeScript/tsc/pkg/compiler"
+	"github.com/microsoft/TypeScript/tsc/pkg/core"
+	"github.com/microsoft/TypeScript/tsc/pkg/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/pkg/tspath"
+	"github.com/microsoft/TypeScript/tsc/pkg/vfs"
+	"github.com/microsoft/TypeScript/tsc/pkg/vfs/vfstest"
 )
 
 func ConfigureRule(ruleName string, options []byte, program *compiler.Program, typeChecker *checker.Checker, sourceFile *ast.SourceFile, onReport func(rule.Report)) rule.Listeners {
@@ -93,17 +94,17 @@ func RuleTesterLint(files string, fileName string, ruleName string, options stri
 		panic(err)
 	}
 
-	fs := bundled.WrapFS(vfstest.FromMap(fileMap, true))
+	fs := bundled.WrapFS(vfstest.FromMap(fileMap, tspath.CaseSensitive))
 	cwd := "/"
 	configFileName := "/tsconfig.json"
-	host := compiler.NewCompilerHost(cwd, fs, bundled.LibPath(), nil, nil)
+	host := compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)
 
 	program, err := createProgramFromOpts(fs, cwd, configFileName, host)
 	if err != nil {
 		panic(err)
 	}
 
-	sourceFile := program.GetSourceFile(fileName)
+	sourceFile := program.GetSourceFile(tspath.RootedFilePathFromNormalized(fileName))
 	typeChecker, done := program.GetTypeCheckerForFile(context.Background(), sourceFile)
 	defer done()
 
@@ -280,7 +281,13 @@ func createSnapshotMarkerPrefix(line string, indentEnd int, markerStart int) str
 }
 
 func createProgramFromOpts(fs vfs.FS, cwd string, tsconfigPath string, host compiler.CompilerHost) (*compiler.Program, error) {
-	configParseResult, _ := tsoptions.GetParsedCommandLineOfConfigFile(tsconfigPath, &core.CompilerOptions{}, nil, host, nil)
+	configParseResult, _ := tsoptions.GetParsedCommandLineOfConfigFile(
+		tspath.RootedFilePathFromNormalized(tsconfigPath),
+		&core.CompilerOptions{},
+		nil,
+		fs,
+		nil,
+	)
 
 	opts := compiler.ProgramOptions{
 		Config: configParseResult,

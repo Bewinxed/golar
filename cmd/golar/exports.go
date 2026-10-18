@@ -34,10 +34,10 @@ import (
 	"github.com/auvred/golar/internal/linter/rule"
 	"github.com/auvred/golar/internal/utils"
 	"github.com/auvred/golar/internal/workspace"
-	"github.com/microsoft/typescript-go/pkg/ast"
-	"github.com/microsoft/typescript-go/pkg/compiler"
-	"github.com/microsoft/typescript-go/pkg/core"
-	"github.com/microsoft/typescript-go/pkg/execute"
+	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+	"github.com/microsoft/TypeScript/tsc/pkg/compiler"
+	"github.com/microsoft/TypeScript/tsc/pkg/core"
+	"github.com/microsoft/TypeScript/tsc/pkg/execute"
 )
 
 type SyncBuffer []byte

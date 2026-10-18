@@ -1,9 +1,9 @@
 package utils
 
 import (
-	"github.com/microsoft/typescript-go/pkg/ast"
-	"github.com/microsoft/typescript-go/pkg/checker"
-	"github.com/microsoft/typescript-go/pkg/core"
+	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+	"github.com/microsoft/TypeScript/tsc/pkg/checker"
+	"github.com/microsoft/TypeScript/tsc/pkg/core"
 )
 
 func IsTypeFlagSet(t *checker.Type, flag checker.TypeFlags) bool {
@@ -11,7 +11,7 @@ func IsTypeFlagSet(t *checker.Type, flag checker.TypeFlags) bool {
 }
 
 func IsSymbolFlagSet(symbol *ast.Symbol, flag ast.SymbolFlags) bool {
-	return symbol != nil && symbol.Flags&flag != 0
+	return symbol != nil && symbol.Flags()&flag != 0
 }
 
 func UnionTypeParts(t *checker.Type) []*checker.Type {

@@ -1,18 +1,20 @@
 package linter
 
 import (
+	"context"
 	"encoding/binary"
 	"testing"
 	"unsafe"
 
 	_ "github.com/auvred/golar/internal/golar"
+	"github.com/auvred/golar/internal/linter/rule"
 
-	apiencoder "github.com/microsoft/typescript-go/pkg/api/encoder"
-	"github.com/microsoft/typescript-go/pkg/ast"
-	"github.com/microsoft/typescript-go/pkg/bundled"
-	"github.com/microsoft/typescript-go/pkg/compiler"
-	"github.com/microsoft/typescript-go/pkg/tspath"
-	"github.com/microsoft/typescript-go/pkg/vfs/vfstest"
+	apiencoder "github.com/microsoft/TypeScript/tsc/pkg/api/encoder"
+	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+	"github.com/microsoft/TypeScript/tsc/pkg/bundled"
+	"github.com/microsoft/TypeScript/tsc/pkg/compiler"
+	"github.com/microsoft/TypeScript/tsc/pkg/tspath"
+	"github.com/microsoft/TypeScript/tsc/pkg/vfs/vfstest"
 	"gotest.tools/v3/assert"
 )
 
@@ -20,6 +22,37 @@ const (
 	inferredProjectKey   = "__inferred__"
 	anyConfiguredProject = "__configured__"
 )
+
+func TestCreatePrograms_FileSpecifiersUseWorkspaceDirectory(t *testing.T) {
+	t.Parallel()
+	fileName := "/repo/packages/app/types.ts"
+	fs := bundled.WrapFS(vfstest.FromMap(map[string]any{
+		"/repo/packages/app/tsconfig.json": `{"files": ["types.ts"]}`,
+		fileName:                           `export interface Marker { value: string }`,
+	}, tspath.CaseSensitive))
+	programs, _ := CreatePrograms([]string{fileName}, CreateProgramsOptions{
+		FS: fs, CurrentDirectory: "/repo", DefaultLibraryPath: bundled.LibPath(),
+	})
+	result := programs[fileName]
+	assert.Assert(t, result.Program != nil)
+	assert.Equal(t, result.Program.BaseDirectory().AsString(), "/repo/packages/app")
+	checker, done := result.Program.GetTypeCheckerForFile(context.Background(), result.SourceFile)
+	defer done()
+	typ := checker.GetTypeAtLocation(result.SourceFile.Statements.Nodes[0])
+	for _, test := range []struct {
+		path string
+		want bool
+	}{
+		{"packages/app/types.ts", true},
+		{"types.ts", false},
+		{"", true},
+	} {
+		matches := rule.TypeMatchesSomeSpecifier(result.Program, checker, typ, []rule.TypeOrValueSpecifier{{
+			From: "file", Name: []string{"Marker"}, FilePath: test.path,
+		}})
+		assert.Equal(t, matches, test.want, "filePath %q", test.path)
+	}
+}
 
 func TestCreatePrograms_EmptyInput(t *testing.T) {
 	t.Parallel()
@@ -390,7 +423,8 @@ func TestCreatePrograms_ForcesSourceRedirectWhenConfigDisablesIt(t *testing.T) {
 	assert.Assert(t, program.GetSourceFile("/repo/dependency/fns.ts") != nil)
 	assert.Assert(t, program.GetSourceFile("/repo/decls/fns.d.ts") == nil)
 
-	depPath := tspath.ToPath("/repo/dependency/fns.ts", opts.CurrentDirectory, opts.FS.UseCaseSensitiveFileNames())
+	depFile := tspath.ToRootedFilePath("/repo/dependency/fns.ts", tspath.RootedDirectoryPathFromAbsolute(opts.CurrentDirectory))
+	depPath := opts.FS.CaseSensitivity().PathKey(depFile.AsPath())
 	assert.Assert(t, program.IsSourceFromProjectReference(depPath))
 }
 
@@ -456,10 +490,43 @@ func TestCreatePrograms_StampsImportedNonInputFiles(t *testing.T) {
 	assert.Assert(t, foundStampedChild)
 }
 
+func TestCreatePrograms_CheckerNodeIDsAreUniqueAcrossFiles(t *testing.T) {
+	t.Parallel()
+
+	files := map[string]any{
+		"/repo/tsconfig.json": `{"include": ["src/**/*.ts"]}`,
+		"/repo/src/main.ts":   `import { foo } from './dep'; export const bar: number = foo;`,
+		"/repo/src/dep.ts":    `export const foo: number = 1;`,
+	}
+	programs, _, opts := createPrograms(t, files, []string{"/repo/src/main.ts"}, true)
+	result := requireProgramForInput(t, programs, "/repo/src/main.ts", opts)
+	seen := make(map[ast.NodeId]*ast.Node)
+	for _, fileName := range []string{"/repo/src/main.ts", "/repo/src/dep.ts"} {
+		file := result.Program.GetSourceFile(tspath.RootedFilePathFromNormalized(fileName))
+		assert.Assert(t, file != nil)
+		// Wire IDs intentionally restart in each source file; checker IDs must not.
+		assert.Equal(t, file.AsNode().Id, uint32(1))
+		visitSourceFileNodes(file, func(node *ast.Node) {
+			id := ast.GetNodeId(node)
+			assert.Assert(t, id != 0)
+			assert.Equal(t, ast.GetNodeId(node), id)
+			if previous, exists := seen[id]; exists {
+				assert.Assert(t, previous == node, "checker node ID reused across nodes")
+			}
+			seen[id] = node
+		})
+	}
+	assert.Equal(t, len(result.Program.GetSemanticDiagnostics(context.Background(), nil)), 0)
+}
+
 func createPrograms(t *testing.T, files map[string]any, inputs []string, useCaseSensitive bool) (map[string]ProgramSourceFile, []*compiler.Program, CreateProgramsOptions) {
 	t.Helper()
 
-	fs := bundled.WrapFS(vfstest.FromMap(files, useCaseSensitive))
+	caseSensitivity := tspath.CaseInsensitive
+	if useCaseSensitive {
+		caseSensitivity = tspath.CaseSensitive
+	}
+	fs := bundled.WrapFS(vfstest.FromMap(files, caseSensitivity))
 	opts := CreateProgramsOptions{
 		FS:                 fs,
 		CurrentDirectory:   "/",
@@ -477,8 +544,9 @@ func requireProgramForInput(t *testing.T, programs map[string]ProgramSourceFile,
 	assert.Assert(t, result.Program != nil, "expected non-nil program for input %s", input)
 	assert.Assert(t, result.SourceFile != nil, "expected non-nil source file for input %s", input)
 
-	normalized := tspath.GetNormalizedAbsolutePath(input, opts.CurrentDirectory)
-	path := tspath.ToPath(normalized, opts.CurrentDirectory, opts.FS.UseCaseSensitiveFileNames())
+	currentDirectory := tspath.RootedDirectoryPathFromAbsolute(opts.CurrentDirectory)
+	normalized := tspath.ToRootedFilePath(input, currentDirectory)
+	path := opts.FS.CaseSensitivity().PathKey(normalized.AsPath())
 	assert.Assert(t, result.SourceFile == result.Program.GetSourceFileByPath(path), "expected source file for %s to match %s", input, normalized)
 
 	return result
@@ -489,7 +557,7 @@ func programKey(program *compiler.Program) string {
 	if commandLine == nil || commandLine.ConfigFile == nil {
 		return inferredProjectKey
 	}
-	return commandLine.ConfigName()
+	return commandLine.ConfigName().AsString()
 }
 
 func encodedNodeIndexes(encoded []byte) map[uintptr]uint32 {

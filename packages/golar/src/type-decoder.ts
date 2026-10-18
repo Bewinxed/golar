@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import type {
 	RemoteNode,
 	RemoteNodeList,
-} from '../../../thirdparty/typescript-go/_packages/native-preview/dist/api/node/node.js'
+} from '../../../thirdparty/typescript-go/packages/typescript/dist/api/node/node.js'
 import {
 	ObjectFlags,
 	TypeFlags,
@@ -322,7 +322,6 @@ export class Symbol {
 			(pointer) =>
 				this.registry.nodeResolver.resolveNode(pointer) as RemoteNode,
 		)
-		// @ts-expect-error
 		return this.declarations_
 	}
 
@@ -332,7 +331,6 @@ export class Symbol {
 				this.valueDeclarationPointer_,
 			) as RemoteNode
 		}
-		// @ts-expect-error
 		return this.valueDeclaration_
 	}
 }

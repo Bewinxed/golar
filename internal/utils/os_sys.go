@@ -1,25 +1,27 @@
-// copied from thirdparty/typescript-go/cmd/tsgo/sys.go
+// copied from thirdparty/typescript-go/tsc/cmd/tsc/sys.go
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"time"
 
-	"github.com/microsoft/typescript-go/pkg/bundled"
-	"github.com/microsoft/typescript-go/pkg/execute/tsc"
-	"github.com/microsoft/typescript-go/pkg/tspath"
-	"github.com/microsoft/typescript-go/pkg/vfs"
-	"github.com/microsoft/typescript-go/pkg/vfs/osvfs"
+	"github.com/microsoft/TypeScript/tsc/pkg/bundled"
+	"github.com/microsoft/TypeScript/tsc/pkg/execute/tsc"
+	"github.com/microsoft/TypeScript/tsc/pkg/tspath"
+	"github.com/microsoft/TypeScript/tsc/pkg/vfs"
+	"github.com/microsoft/TypeScript/tsc/pkg/vfs/osvfs"
 	"golang.org/x/term"
 )
 
 type osSys struct {
 	writer             io.Writer
 	fs                 vfs.FS
-	defaultLibraryPath string
-	cwd                string
+	defaultLibraryPath tspath.RootedDirectoryPath
+	cwd                tspath.RootedDirectoryPath
 	start              time.Time
 }
 
@@ -35,16 +37,20 @@ func (s *osSys) FS() vfs.FS {
 	return s.fs
 }
 
-func (s *osSys) DefaultLibraryPath() string {
+func (s *osSys) DefaultLibraryPath() tspath.RootedDirectoryPath {
 	return s.defaultLibraryPath
 }
 
-func (s *osSys) GetCurrentDirectory() string {
+func (s *osSys) GetCurrentDirectory() tspath.RootedDirectoryPath {
 	return s.cwd
 }
 
 func (s *osSys) Writer() io.Writer {
 	return s.writer
+}
+
+func (s *osSys) ErrorWriter() io.Writer {
+	return os.Stderr
 }
 
 func (s *osSys) WriteOutputIsTTY() bool {
@@ -56,9 +62,59 @@ func (s *osSys) GetWidthOfTerminal() int {
 	return width
 }
 
-func (s *osSys) GetEnvironmentVariable(name string) string {
-	return os.Getenv(name)
+func (s *osSys) GetEnvironmentVariable(name string) (string, bool) {
+	return os.LookupEnv(name)
 }
+
+func (s *osSys) Spawn(command []string, dir string, stderr io.Writer) (io.ReadWriteCloser, error) {
+	cmd := exec.Command(command[0], command[1:]...)
+	cmd.Dir = dir
+	cmd.Stderr = stderr
+	cmd.WaitDelay = time.Second
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, err
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	return &childProcess{cmd: cmd, stdin: stdin, stdout: stdout}, nil
+}
+
+type childProcess struct {
+	cmd    *exec.Cmd
+	stdin  io.WriteCloser
+	stdout io.Reader
+}
+
+func (p *childProcess) Read(b []byte) (int, error)  { return p.stdout.Read(b) }
+func (p *childProcess) Write(b []byte) (int, error) { return p.stdin.Write(b) }
+
+func (p *childProcess) ExitCode() (int, bool) {
+	if p.cmd.ProcessState == nil {
+		return 0, false
+	}
+	return p.cmd.ProcessState.ExitCode(), true
+}
+
+func (p *childProcess) Close() error {
+	_ = p.stdin.Close()
+	_ = p.cmd.Process.Kill()
+	err := p.cmd.Wait()
+	if _, ok := errors.AsType[*exec.ExitError](err); ok {
+		return nil
+	}
+	if errors.Is(err, exec.ErrWaitDelay) {
+		return nil
+	}
+	return err
+}
+
+var _ tsc.System = (*osSys)(nil)
 
 func NewOsSystem() *osSys {
 	cwd, err := os.Getwd()
@@ -68,7 +124,7 @@ func NewOsSystem() *osSys {
 	}
 
 	return &osSys{
-		cwd:                tspath.NormalizePath(cwd),
+		cwd:                tspath.RootedDirectoryPathFromAbsolute(cwd),
 		fs:                 bundled.WrapFS(osvfs.FS()),
 		defaultLibraryPath: bundled.LibPath(),
 		writer:             os.Stdout,

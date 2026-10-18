@@ -1,19 +1,16 @@
 package utils
 
 import (
-	"github.com/microsoft/typescript-go/pkg/ast"
-	"github.com/microsoft/typescript-go/pkg/checker"
-	"github.com/microsoft/typescript-go/pkg/compiler"
-	"github.com/microsoft/typescript-go/pkg/core"
-	"github.com/microsoft/typescript-go/pkg/tsoptions"
-	"github.com/microsoft/typescript-go/pkg/tspath"
+	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+	"github.com/microsoft/TypeScript/tsc/pkg/checker"
+	"github.com/microsoft/TypeScript/tsc/pkg/compiler"
+	"github.com/microsoft/TypeScript/tsc/pkg/core"
+	"github.com/microsoft/TypeScript/tsc/pkg/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/pkg/tspath"
 )
 
-func ComparePaths(a string, b string, program *compiler.Program) int {
-	return tspath.ComparePaths(a, b, tspath.ComparePathsOptions{
-		CurrentDirectory:          program.Host().GetCurrentDirectory(),
-		UseCaseSensitiveFileNames: program.Host().FS().UseCaseSensitiveFileNames(),
-	})
+func ComparePaths(a tspath.RootedFilePath, b tspath.RootedFilePath, program *compiler.Program) int {
+	return program.Host().FS().CaseSensitivity().CompareFilePaths(a, b)
 }
 
 func IsSourceFileDefaultLibrary(program *compiler.Program, file *ast.SourceFile) bool {
@@ -21,7 +18,7 @@ func IsSourceFileDefaultLibrary(program *compiler.Program, file *ast.SourceFile)
 		return false
 	}
 
-	if program.IsSourceFileDefaultLibrary(file.Path()) {
+	if program.IsSourceFileDefaultLibrary(file.PathKey()) {
 		return true
 	}
 
@@ -32,21 +29,21 @@ func IsSourceFileDefaultLibrary(program *compiler.Program, file *ast.SourceFile)
 	}
 
 	// copied from program.go
-	var libs []string
+	var libs []tspath.RootedFilePath
 	if options.Lib == nil {
 		name := tsoptions.GetDefaultLibFileName(options)
-		libs = append(libs, tspath.CombinePaths(program.Host().DefaultLibraryPath(), name))
+		libs = append(libs, program.Host().DefaultLibraryPath().ResolveFile(name))
 	} else {
 		for _, lib := range options.Lib {
 			name, ok := tsoptions.GetLibFileName(lib)
 			if ok {
-				libs = append(libs, tspath.CombinePaths(program.Host().DefaultLibraryPath(), name))
+				libs = append(libs, program.Host().DefaultLibraryPath().ResolveFile(name))
 			}
 			// !!! error on unknown name
 		}
 	}
 
-	return core.Some(libs, func(lib string) bool {
+	return core.Some(libs, func(lib tspath.RootedFilePath) bool {
 		return ComparePaths(file.FileName(), lib, program) == 0
 	})
 }
@@ -59,7 +56,7 @@ func IsSymbolFromDefaultLibrary(
 		return false
 	}
 
-	for _, declaration := range symbol.Declarations {
+	for _, declaration := range symbol.Declarations() {
 		sourceFile := ast.GetSourceFileOfNode(declaration)
 		if IsSourceFileDefaultLibrary(program, sourceFile) {
 			return true
@@ -134,7 +131,7 @@ func IsReadonlyTypeLike(
 	predicate func(subType *checker.Type) bool,
 ) bool {
 	return IsBuiltinTypeAliasLike(program, typeChecker, t, func(subtype *checker.Type) bool {
-		return subtype.Alias().Symbol().Name == "Readonly" && predicate(subtype)
+		return subtype.Alias().Symbol().Name() == "Readonly" && predicate(subtype)
 	})
 }
 
@@ -182,7 +179,7 @@ func IsBuiltinSymbolLike(
 			return builtinPredicateMatches_False
 		}
 
-		actualSymbolName := symbol.Name
+		actualSymbolName := symbol.Name()
 
 		if core.Some(symbolNames, func(name string) bool { return actualSymbolName == name }) && IsSymbolFromDefaultLibrary(program, symbol) {
 			return builtinPredicateMatches_True

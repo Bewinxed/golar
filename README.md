@@ -1,6 +1,6 @@
 # Golar
 
-Golar is an embedded language tooling orchestrator based on [typescript-go](https://github.com/microsoft/typescript-go). It enables type checking, linting, and LSP support for TypeScript-based languages like Astro, Svelte, and Vue through typescript-go. Its architecture is inspired by [@johnsoncodehk](https://github.com/johnsoncodehk)'s [Volar.js](https://github.com/volarjs/volar.js).
+Golar is an embedded language tooling orchestrator based on [typescript-go](https://github.com/microsoft/typescript). It enables type checking, linting, and LSP support for TypeScript-based languages like Astro, Svelte, and Vue through typescript-go. Its architecture is inspired by [@johnsoncodehk](https://github.com/johnsoncodehk)'s [Volar.js](https://github.com/volarjs/volar.js).
 
 ## Getting Started
 

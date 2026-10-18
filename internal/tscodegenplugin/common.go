@@ -6,7 +6,7 @@ import (
 
 	"github.com/auvred/golar/internal/mapping"
 	"github.com/auvred/golar/plugin"
-	"github.com/microsoft/typescript-go/pkg/core"
+	"github.com/microsoft/TypeScript/tsc/pkg/core"
 )
 
 type ServiceCodeError struct {

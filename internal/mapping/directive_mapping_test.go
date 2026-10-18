@@ -3,7 +3,7 @@ package mapping
 import (
 	"testing"
 
-	"github.com/microsoft/typescript-go/pkg/core"
+	"github.com/microsoft/TypeScript/tsc/pkg/core"
 )
 
 func TestExpectErrorSuppressesMultipleDiagnosticsInRegion(t *testing.T) {

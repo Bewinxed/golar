@@ -143,10 +143,7 @@ pub struct RawTupleType {
     pub resolvedBaseConstraint: *const RawType,
     pub _pad0: [u8; 8],
     pub properties: GoSlice<*const RawSymbol>,
-    pub signatures: GoSlice<*const RawSignature>,
-    pub callSignatureCount: isize,
-    pub indexInfos: GoSlice<*const RawIndexInfo>,
-    pub objectTypeWithoutAbstractConstructSignatures: *const RawType,
+    pub extra: *const u8,
     pub target: *const RawType,
     pub _pad1: [u8; 16],
     pub node: *const RawNode,
@@ -191,20 +188,8 @@ impl<'a> TupleType<'a> {
         slice_iter(unsafe { (*self.raw).properties })
     }
 
-    pub fn signatures(self) -> SliceIter<'a, RawSignature, Signature<'a>> {
-        slice_iter(unsafe { (*self.raw).signatures })
-    }
-
-    pub fn call_signature_count(self) -> isize {
-        unsafe { (*self.raw).callSignatureCount }
-    }
-
-    pub fn index_infos(self) -> SliceIter<'a, RawIndexInfo, IndexInfo<'a>> {
-        slice_iter(unsafe { (*self.raw).indexInfos })
-    }
-
-    pub fn object_type_without_abstract_construct_signatures(self) -> Option<Type<'a>> {
-        type_from_raw(unsafe { (*self.raw).objectTypeWithoutAbstractConstructSignatures })
+    pub fn extra(self) -> *const u8 {
+        unsafe { (*self.raw).extra }
     }
 
     pub fn target(self) -> Option<Type<'a>> {
@@ -302,10 +287,7 @@ pub struct RawInstantiationExpressionType {
     pub resolvedBaseConstraint: *const RawType,
     pub _pad0: [u8; 8],
     pub properties: GoSlice<*const RawSymbol>,
-    pub signatures: GoSlice<*const RawSignature>,
-    pub callSignatureCount: isize,
-    pub indexInfos: GoSlice<*const RawIndexInfo>,
-    pub objectTypeWithoutAbstractConstructSignatures: *const RawType,
+    pub extra: *const u8,
     pub target: *const RawType,
     pub _pad1: [u8; 16],
     pub node: *const RawNode,
@@ -332,20 +314,8 @@ impl<'a> InstantiationExpressionType<'a> {
         slice_iter(unsafe { (*self.raw).properties })
     }
 
-    pub fn signatures(self) -> SliceIter<'a, RawSignature, Signature<'a>> {
-        slice_iter(unsafe { (*self.raw).signatures })
-    }
-
-    pub fn call_signature_count(self) -> isize {
-        unsafe { (*self.raw).callSignatureCount }
-    }
-
-    pub fn index_infos(self) -> SliceIter<'a, RawIndexInfo, IndexInfo<'a>> {
-        slice_iter(unsafe { (*self.raw).indexInfos })
-    }
-
-    pub fn object_type_without_abstract_construct_signatures(self) -> Option<Type<'a>> {
-        type_from_raw(unsafe { (*self.raw).objectTypeWithoutAbstractConstructSignatures })
+    pub fn extra(self) -> *const u8 {
+        unsafe { (*self.raw).extra }
     }
 
     pub fn target(self) -> Option<Type<'a>> {
@@ -380,10 +350,7 @@ pub struct RawMappedType {
     pub resolvedBaseConstraint: *const RawType,
     pub _pad0: [u8; 8],
     pub properties: GoSlice<*const RawSymbol>,
-    pub signatures: GoSlice<*const RawSignature>,
-    pub callSignatureCount: isize,
-    pub indexInfos: GoSlice<*const RawIndexInfo>,
-    pub objectTypeWithoutAbstractConstructSignatures: *const RawType,
+    pub extra: *const u8,
     pub target: *const RawType,
     pub _pad1: [u8; 16],
     pub declaration: *const RawNode,
@@ -417,20 +384,8 @@ impl<'a> MappedType<'a> {
         slice_iter(unsafe { (*self.raw).properties })
     }
 
-    pub fn signatures(self) -> SliceIter<'a, RawSignature, Signature<'a>> {
-        slice_iter(unsafe { (*self.raw).signatures })
-    }
-
-    pub fn call_signature_count(self) -> isize {
-        unsafe { (*self.raw).callSignatureCount }
-    }
-
-    pub fn index_infos(self) -> SliceIter<'a, RawIndexInfo, IndexInfo<'a>> {
-        slice_iter(unsafe { (*self.raw).indexInfos })
-    }
-
-    pub fn object_type_without_abstract_construct_signatures(self) -> Option<Type<'a>> {
-        type_from_raw(unsafe { (*self.raw).objectTypeWithoutAbstractConstructSignatures })
+    pub fn extra(self) -> *const u8 {
+        unsafe { (*self.raw).extra }
     }
 
     pub fn target(self) -> Option<Type<'a>> {
@@ -492,10 +447,7 @@ pub struct RawReverseMappedType {
     pub resolvedBaseConstraint: *const RawType,
     pub _pad0: [u8; 8],
     pub properties: GoSlice<*const RawSymbol>,
-    pub signatures: GoSlice<*const RawSignature>,
-    pub callSignatureCount: isize,
-    pub indexInfos: GoSlice<*const RawIndexInfo>,
-    pub objectTypeWithoutAbstractConstructSignatures: *const RawType,
+    pub extra: *const u8,
     pub target: *const RawType,
     pub _pad1: [u8; 16],
     pub source: *const RawType,
@@ -524,20 +476,8 @@ impl<'a> ReverseMappedType<'a> {
         slice_iter(unsafe { (*self.raw).properties })
     }
 
-    pub fn signatures(self) -> SliceIter<'a, RawSignature, Signature<'a>> {
-        slice_iter(unsafe { (*self.raw).signatures })
-    }
-
-    pub fn call_signature_count(self) -> isize {
-        unsafe { (*self.raw).callSignatureCount }
-    }
-
-    pub fn index_infos(self) -> SliceIter<'a, RawIndexInfo, IndexInfo<'a>> {
-        slice_iter(unsafe { (*self.raw).indexInfos })
-    }
-
-    pub fn object_type_without_abstract_construct_signatures(self) -> Option<Type<'a>> {
-        type_from_raw(unsafe { (*self.raw).objectTypeWithoutAbstractConstructSignatures })
+    pub fn extra(self) -> *const u8 {
+        unsafe { (*self.raw).extra }
     }
 
     pub fn target(self) -> Option<Type<'a>> {
@@ -579,10 +519,7 @@ pub struct RawEvolvingArrayType {
     pub resolvedBaseConstraint: *const RawType,
     pub _pad0: [u8; 8],
     pub properties: GoSlice<*const RawSymbol>,
-    pub signatures: GoSlice<*const RawSignature>,
-    pub callSignatureCount: isize,
-    pub indexInfos: GoSlice<*const RawIndexInfo>,
-    pub objectTypeWithoutAbstractConstructSignatures: *const RawType,
+    pub extra: *const u8,
     pub target: *const RawType,
     pub _pad1: [u8; 16],
     pub elementType: *const RawType,
@@ -610,20 +547,8 @@ impl<'a> EvolvingArrayType<'a> {
         slice_iter(unsafe { (*self.raw).properties })
     }
 
-    pub fn signatures(self) -> SliceIter<'a, RawSignature, Signature<'a>> {
-        slice_iter(unsafe { (*self.raw).signatures })
-    }
-
-    pub fn call_signature_count(self) -> isize {
-        unsafe { (*self.raw).callSignatureCount }
-    }
-
-    pub fn index_infos(self) -> SliceIter<'a, RawIndexInfo, IndexInfo<'a>> {
-        slice_iter(unsafe { (*self.raw).indexInfos })
-    }
-
-    pub fn object_type_without_abstract_construct_signatures(self) -> Option<Type<'a>> {
-        type_from_raw(unsafe { (*self.raw).objectTypeWithoutAbstractConstructSignatures })
+    pub fn extra(self) -> *const u8 {
+        unsafe { (*self.raw).extra }
     }
 
     pub fn target(self) -> Option<Type<'a>> {
@@ -663,8 +588,10 @@ pub struct RawTypeParameter {
     pub target: *const RawType,
     pub _pad0: [u8; 8],
     pub isThisType: u8,
-    pub _pad1: [u8; 7],
+    pub isDistributed: u8,
+    pub _pad1: [u8; 6],
     pub resolvedDefaultType: *const RawType,
+    pub distributedType: *const RawType,
 }
 
 #[repr(transparent)]
@@ -696,8 +623,16 @@ impl<'a> TypeParameter<'a> {
         unsafe { (*self.raw).isThisType != 0 }
     }
 
+    pub fn is_distributed(self) -> bool {
+        unsafe { (*self.raw).isDistributed != 0 }
+    }
+
     pub fn resolved_default_type(self) -> Option<Type<'a>> {
         type_from_raw(unsafe { (*self.raw).resolvedDefaultType })
+    }
+
+    pub fn distributed_type(self) -> Option<Type<'a>> {
+        type_from_raw(unsafe { (*self.raw).distributedType })
     }
 }
 
@@ -723,10 +658,7 @@ pub struct RawUnionType {
     pub resolvedBaseConstraint: *const RawType,
     pub _pad0: [u8; 8],
     pub properties: GoSlice<*const RawSymbol>,
-    pub signatures: GoSlice<*const RawSignature>,
-    pub callSignatureCount: isize,
-    pub indexInfos: GoSlice<*const RawIndexInfo>,
-    pub objectTypeWithoutAbstractConstructSignatures: *const RawType,
+    pub extra: *const u8,
     pub types: GoSlice<*const RawType>,
     pub _pad1: [u8; 16],
     pub resolvedProperties: GoSlice<*const RawSymbol>,
@@ -757,20 +689,8 @@ impl<'a> UnionType<'a> {
         slice_iter(unsafe { (*self.raw).properties })
     }
 
-    pub fn signatures(self) -> SliceIter<'a, RawSignature, Signature<'a>> {
-        slice_iter(unsafe { (*self.raw).signatures })
-    }
-
-    pub fn call_signature_count(self) -> isize {
-        unsafe { (*self.raw).callSignatureCount }
-    }
-
-    pub fn index_infos(self) -> SliceIter<'a, RawIndexInfo, IndexInfo<'a>> {
-        slice_iter(unsafe { (*self.raw).indexInfos })
-    }
-
-    pub fn object_type_without_abstract_construct_signatures(self) -> Option<Type<'a>> {
-        type_from_raw(unsafe { (*self.raw).objectTypeWithoutAbstractConstructSignatures })
+    pub fn extra(self) -> *const u8 {
+        unsafe { (*self.raw).extra }
     }
 
     pub fn types(self) -> SliceIter<'a, RawType, Type<'a>> {
@@ -820,10 +740,7 @@ pub struct RawIntersectionType {
     pub resolvedBaseConstraint: *const RawType,
     pub _pad0: [u8; 8],
     pub properties: GoSlice<*const RawSymbol>,
-    pub signatures: GoSlice<*const RawSignature>,
-    pub callSignatureCount: isize,
-    pub indexInfos: GoSlice<*const RawIndexInfo>,
-    pub objectTypeWithoutAbstractConstructSignatures: *const RawType,
+    pub extra: *const u8,
     pub types: GoSlice<*const RawType>,
     pub _pad1: [u8; 16],
     pub resolvedProperties: GoSlice<*const RawSymbol>,
@@ -852,20 +769,8 @@ impl<'a> IntersectionType<'a> {
         slice_iter(unsafe { (*self.raw).properties })
     }
 
-    pub fn signatures(self) -> SliceIter<'a, RawSignature, Signature<'a>> {
-        slice_iter(unsafe { (*self.raw).signatures })
-    }
-
-    pub fn call_signature_count(self) -> isize {
-        unsafe { (*self.raw).callSignatureCount }
-    }
-
-    pub fn index_infos(self) -> SliceIter<'a, RawIndexInfo, IndexInfo<'a>> {
-        slice_iter(unsafe { (*self.raw).indexInfos })
-    }
-
-    pub fn object_type_without_abstract_construct_signatures(self) -> Option<Type<'a>> {
-        type_from_raw(unsafe { (*self.raw).objectTypeWithoutAbstractConstructSignatures })
+    pub fn extra(self) -> *const u8 {
+        unsafe { (*self.raw).extra }
     }
 
     pub fn types(self) -> SliceIter<'a, RawType, Type<'a>> {
@@ -1277,10 +1182,7 @@ pub struct RawStructuredType {
     pub resolvedBaseConstraint: *const RawType,
     pub _pad0: [u8; 8],
     pub properties: GoSlice<*const RawSymbol>,
-    pub signatures: GoSlice<*const RawSignature>,
-    pub callSignatureCount: isize,
-    pub indexInfos: GoSlice<*const RawIndexInfo>,
-    pub objectTypeWithoutAbstractConstructSignatures: *const RawType,
+    pub extra: *const u8,
 }
 
 #[repr(transparent)]
@@ -1304,20 +1206,8 @@ impl<'a> StructuredType<'a> {
         slice_iter(unsafe { (*self.raw).properties })
     }
 
-    pub fn signatures(self) -> SliceIter<'a, RawSignature, Signature<'a>> {
-        slice_iter(unsafe { (*self.raw).signatures })
-    }
-
-    pub fn call_signature_count(self) -> isize {
-        unsafe { (*self.raw).callSignatureCount }
-    }
-
-    pub fn index_infos(self) -> SliceIter<'a, RawIndexInfo, IndexInfo<'a>> {
-        slice_iter(unsafe { (*self.raw).indexInfos })
-    }
-
-    pub fn object_type_without_abstract_construct_signatures(self) -> Option<Type<'a>> {
-        type_from_raw(unsafe { (*self.raw).objectTypeWithoutAbstractConstructSignatures })
+    pub fn extra(self) -> *const u8 {
+        unsafe { (*self.raw).extra }
     }
 }
 
@@ -1343,10 +1233,7 @@ pub struct RawObjectType {
     pub resolvedBaseConstraint: *const RawType,
     pub _pad0: [u8; 8],
     pub properties: GoSlice<*const RawSymbol>,
-    pub signatures: GoSlice<*const RawSignature>,
-    pub callSignatureCount: isize,
-    pub indexInfos: GoSlice<*const RawIndexInfo>,
-    pub objectTypeWithoutAbstractConstructSignatures: *const RawType,
+    pub extra: *const u8,
     pub target: *const RawType,
 }
 
@@ -1371,20 +1258,8 @@ impl<'a> ObjectType<'a> {
         slice_iter(unsafe { (*self.raw).properties })
     }
 
-    pub fn signatures(self) -> SliceIter<'a, RawSignature, Signature<'a>> {
-        slice_iter(unsafe { (*self.raw).signatures })
-    }
-
-    pub fn call_signature_count(self) -> isize {
-        unsafe { (*self.raw).callSignatureCount }
-    }
-
-    pub fn index_infos(self) -> SliceIter<'a, RawIndexInfo, IndexInfo<'a>> {
-        slice_iter(unsafe { (*self.raw).indexInfos })
-    }
-
-    pub fn object_type_without_abstract_construct_signatures(self) -> Option<Type<'a>> {
-        type_from_raw(unsafe { (*self.raw).objectTypeWithoutAbstractConstructSignatures })
+    pub fn extra(self) -> *const u8 {
+        unsafe { (*self.raw).extra }
     }
 
     pub fn target(self) -> Option<Type<'a>> {
@@ -1414,10 +1289,7 @@ pub struct RawTypeReference {
     pub resolvedBaseConstraint: *const RawType,
     pub _pad0: [u8; 8],
     pub properties: GoSlice<*const RawSymbol>,
-    pub signatures: GoSlice<*const RawSignature>,
-    pub callSignatureCount: isize,
-    pub indexInfos: GoSlice<*const RawIndexInfo>,
-    pub objectTypeWithoutAbstractConstructSignatures: *const RawType,
+    pub extra: *const u8,
     pub target: *const RawType,
     pub _pad1: [u8; 16],
     pub node: *const RawNode,
@@ -1445,20 +1317,8 @@ impl<'a> TypeReference<'a> {
         slice_iter(unsafe { (*self.raw).properties })
     }
 
-    pub fn signatures(self) -> SliceIter<'a, RawSignature, Signature<'a>> {
-        slice_iter(unsafe { (*self.raw).signatures })
-    }
-
-    pub fn call_signature_count(self) -> isize {
-        unsafe { (*self.raw).callSignatureCount }
-    }
-
-    pub fn index_infos(self) -> SliceIter<'a, RawIndexInfo, IndexInfo<'a>> {
-        slice_iter(unsafe { (*self.raw).indexInfos })
-    }
-
-    pub fn object_type_without_abstract_construct_signatures(self) -> Option<Type<'a>> {
-        type_from_raw(unsafe { (*self.raw).objectTypeWithoutAbstractConstructSignatures })
+    pub fn extra(self) -> *const u8 {
+        unsafe { (*self.raw).extra }
     }
 
     pub fn target(self) -> Option<Type<'a>> {
@@ -1499,10 +1359,7 @@ pub struct RawInterfaceType {
     pub resolvedBaseConstraint: *const RawType,
     pub _pad0: [u8; 8],
     pub properties: GoSlice<*const RawSymbol>,
-    pub signatures: GoSlice<*const RawSignature>,
-    pub callSignatureCount: isize,
-    pub indexInfos: GoSlice<*const RawIndexInfo>,
-    pub objectTypeWithoutAbstractConstructSignatures: *const RawType,
+    pub extra: *const u8,
     pub target: *const RawType,
     pub _pad1: [u8; 16],
     pub node: *const RawNode,
@@ -1542,20 +1399,8 @@ impl<'a> InterfaceType<'a> {
         slice_iter(unsafe { (*self.raw).properties })
     }
 
-    pub fn signatures(self) -> SliceIter<'a, RawSignature, Signature<'a>> {
-        slice_iter(unsafe { (*self.raw).signatures })
-    }
-
-    pub fn call_signature_count(self) -> isize {
-        unsafe { (*self.raw).callSignatureCount }
-    }
-
-    pub fn index_infos(self) -> SliceIter<'a, RawIndexInfo, IndexInfo<'a>> {
-        slice_iter(unsafe { (*self.raw).indexInfos })
-    }
-
-    pub fn object_type_without_abstract_construct_signatures(self) -> Option<Type<'a>> {
-        type_from_raw(unsafe { (*self.raw).objectTypeWithoutAbstractConstructSignatures })
+    pub fn extra(self) -> *const u8 {
+        unsafe { (*self.raw).extra }
     }
 
     pub fn target(self) -> Option<Type<'a>> {
@@ -1634,10 +1479,7 @@ pub struct RawUnionOrIntersectionType {
     pub resolvedBaseConstraint: *const RawType,
     pub _pad0: [u8; 8],
     pub properties: GoSlice<*const RawSymbol>,
-    pub signatures: GoSlice<*const RawSignature>,
-    pub callSignatureCount: isize,
-    pub indexInfos: GoSlice<*const RawIndexInfo>,
-    pub objectTypeWithoutAbstractConstructSignatures: *const RawType,
+    pub extra: *const u8,
     pub types: GoSlice<*const RawType>,
     pub _pad1: [u8; 16],
     pub resolvedProperties: GoSlice<*const RawSymbol>,
@@ -1664,20 +1506,8 @@ impl<'a> UnionOrIntersectionType<'a> {
         slice_iter(unsafe { (*self.raw).properties })
     }
 
-    pub fn signatures(self) -> SliceIter<'a, RawSignature, Signature<'a>> {
-        slice_iter(unsafe { (*self.raw).signatures })
-    }
-
-    pub fn call_signature_count(self) -> isize {
-        unsafe { (*self.raw).callSignatureCount }
-    }
-
-    pub fn index_infos(self) -> SliceIter<'a, RawIndexInfo, IndexInfo<'a>> {
-        slice_iter(unsafe { (*self.raw).indexInfos })
-    }
-
-    pub fn object_type_without_abstract_construct_signatures(self) -> Option<Type<'a>> {
-        type_from_raw(unsafe { (*self.raw).objectTypeWithoutAbstractConstructSignatures })
+    pub fn extra(self) -> *const u8 {
+        unsafe { (*self.raw).extra }
     }
 
     pub fn types(self) -> SliceIter<'a, RawType, Type<'a>> {

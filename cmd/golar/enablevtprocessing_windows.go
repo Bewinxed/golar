@@ -1,4 +1,4 @@
-// Source: https://github.com/microsoft/typescript-go/blob/2f9b360a6f4d43e5f8ebdd5cf01e38ecbcff7dae/cmd/tsgo/enablevtprocessing_windows.go
+// Source: https://github.com/microsoft/TypeScript/blob/9adc871ff47f79b3e99ff2b1cbe9efb140d76af8/tsc/cmd/tsc/enablevtprocessing_windows.go
 
 package main
 

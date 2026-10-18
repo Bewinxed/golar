@@ -3,7 +3,7 @@ package mapping
 import (
 	"slices"
 
-	"github.com/microsoft/typescript-go/pkg/core"
+	"github.com/microsoft/TypeScript/tsc/pkg/core"
 )
 
 type IgnoreDirectiveMapping struct {

@@ -5,13 +5,13 @@ import (
 	"strings"
 
 	"github.com/auvred/golar/internal/utils"
-	"github.com/microsoft/typescript-go/pkg/ast"
-	"github.com/microsoft/typescript-go/pkg/checker"
-	"github.com/microsoft/typescript-go/pkg/compiler"
-	"github.com/microsoft/typescript-go/pkg/core"
-	"github.com/microsoft/typescript-go/pkg/module"
-	"github.com/microsoft/typescript-go/pkg/modulespecifiers"
-	"github.com/microsoft/typescript-go/pkg/tspath"
+	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+	"github.com/microsoft/TypeScript/tsc/pkg/checker"
+	"github.com/microsoft/TypeScript/tsc/pkg/compiler"
+	"github.com/microsoft/TypeScript/tsc/pkg/core"
+	"github.com/microsoft/TypeScript/tsc/pkg/module"
+	"github.com/microsoft/TypeScript/tsc/pkg/modulespecifiers"
+	"github.com/microsoft/TypeScript/tsc/pkg/tspath"
 )
 
 type TypeOrValueSpecifier struct {
@@ -35,7 +35,7 @@ func typeMatchesStringSpecifier(
 			symbol = alias.Symbol()
 		}
 
-		if symbol != nil && slices.Contains(names, symbol.Name) {
+		if symbol != nil && slices.Contains(names, symbol.Name()) {
 			return true
 		}
 
@@ -52,13 +52,18 @@ func typeDeclaredInFile(
 	declarationFiles []*ast.SourceFile,
 	program *compiler.Program,
 ) bool {
-	cwd := program.Host().GetCurrentDirectory()
+	cwd := program.BaseDirectory()
+	if host, ok := program.Host().(interface {
+		GetCurrentDirectory() tspath.RootedDirectoryPath
+	}); ok {
+		cwd = host.GetCurrentDirectory()
+	}
 	if relativePath == "" {
 		return core.Some(declarationFiles, func(f *ast.SourceFile) bool {
-			return strings.HasPrefix(f.FileName(), cwd)
+			return strings.HasPrefix(f.FileName().AsString(), cwd.AsString())
 		})
 	}
-	absPath := tspath.GetNormalizedAbsolutePath(relativePath, cwd)
+	absPath := cwd.ResolveFile(relativePath)
 	return core.Some(declarationFiles, func(f *ast.SourceFile) bool {
 		return f.FileName() == absPath
 	})
@@ -119,7 +124,7 @@ func typeDeclaredInDeclarationFile(
 			return false
 		}
 
-		packageIdName := modulespecifiers.GetPackageNameFromDirectory(declaration.FileName())
+		packageIdName := modulespecifiers.GetPackageNameFromDirectory(declaration.FileName().AsPath())
 		if packageIdName == "" {
 			return false
 		}
@@ -172,7 +177,7 @@ func typeMatchesSpecifier(
 		}
 		var declarations []*ast.Node
 		if symbol != nil {
-			declarations = symbol.Declarations
+			declarations = symbol.Declarations()
 		}
 		declarationFiles := core.Map(declarations, func(d *ast.Node) *ast.SourceFile {
 			return ast.GetSourceFileOfNode(d)

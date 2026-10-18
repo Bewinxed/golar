@@ -8,7 +8,6 @@
       eachSystem = nixpkgs.lib.genAttrs [
         "aarch64-darwin"
         "aarch64-linux"
-        "x86_64-darwin"
         "x86_64-linux"
       ];
     in
@@ -24,17 +23,16 @@
           default = pkgs.mkShell {
             packages = with pkgs; [
               nodejs_24
-              go_1_26
+              go_1_27
               delve
-							gcc
-							gdb
-							rustc
-							rustfmt
-							cargo
+              gcc
+              gdb
+              rustc
+              rustfmt
+              cargo
             ];
           };
         }
       );
     };
 }
-

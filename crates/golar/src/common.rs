@@ -139,8 +139,9 @@ pub struct RawNode {
     pub kind: Kind,
     pub flags: u32,
     pub loc: TextRange,
+    // Upstream's atomic node ID is separate from Golar's per-file protocol ID.
+    pub globalId: u64,
     pub parent: *const RawNode,
-    pub data: GoIface,
     pub sourceFileId: u32,
     pub id: u32,
 }
@@ -164,16 +165,26 @@ pub struct RawModifierList {
 pub struct RawSymbol {
     pub flags: SymbolFlags,
     pub checkFlags: CheckFlags,
+    pub id: u64,
+    pub data: *const RawSymbolData,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct RawSymbolData {
     pub name: GoString,
     pub declarations: GoSlice<*const RawNode>,
     pub valueDeclaration: *const RawNode,
+    pub parent: *const RawSymbol,
+    pub extra: *const RawSymbolExtra,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct RawSymbolExtra {
     pub members: *const u8,
     pub exports: *const u8,
-    pub id: u64,
-    pub parent: *const RawSymbol,
     pub exportSymbol: *const RawSymbol,
-    pub assignmentDeclarationMembers: *const u8,
-    pub globalExports: *const u8,
 }
 
 #[repr(C)]
@@ -189,11 +200,11 @@ pub struct RawType {
     pub flags: TypeFlags,
     pub objectFlags: ObjectFlags,
     pub id: TypeId,
-    pub _pad0: [u8; 4],
+    pub kind: u8,
+    pub _pad0: [u8; 3],
     pub symbol: *const RawSymbol,
     pub alias: *const RawTypeAlias,
     pub checker: *const u8,
-    pub data: GoIface,
 }
 
 #[repr(C)]
@@ -250,18 +261,24 @@ pub struct RawConditionalRoot {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct RawSignature {
+    pub id: u32,
     pub flags: SignatureFlags,
     pub minArgumentCount: i32,
     pub resolvedMinArgumentCount: i32,
-    pub _pad0: [u8; 4],
     pub declaration: *const RawNode,
-    pub typeParameters: GoSlice<*const RawType>,
     pub parameters: GoSlice<*const RawSymbol>,
-    pub thisParameter: *const RawSymbol,
     pub resolvedReturnType: *const RawType,
-    pub resolvedTypePredicate: *const RawCheckerTypePredicate,
     pub target: *const RawSignature,
     pub mapper: *const u8,
+    pub extra: *const RawSignatureExtra,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct RawSignatureExtra {
+    pub typeParameters: GoSlice<*const RawType>,
+    pub thisParameter: *const RawSymbol,
+    pub resolvedTypePredicate: *const RawCheckerTypePredicate,
     pub isolatedSignatureType: *const RawType,
     pub composite: *const RawCompositeSignature,
 }
@@ -443,27 +460,34 @@ impl<'a> Symbol<'a> {
 
     #[inline(always)]
     pub fn name(self) -> &'a str {
-        unsafe { (*self.raw).name.as_str() }
+        unsafe { (*(*self.raw).data).name.as_str() }
     }
 
     #[inline(always)]
     pub fn declarations(self) -> SliceIter<'a, RawNode, Node<'a>> {
-        slice_iter(unsafe { (*self.raw).declarations })
+        slice_iter(unsafe { (*(*self.raw).data).declarations })
     }
 
     #[inline(always)]
     pub fn value_declaration(self) -> Option<Node<'a>> {
-        node_from_raw(unsafe { (*self.raw).valueDeclaration })
+        node_from_raw(unsafe { (*(*self.raw).data).valueDeclaration })
     }
 
     #[inline(always)]
     pub fn parent(self) -> Option<Symbol<'a>> {
-        symbol_from_raw(unsafe { (*self.raw).parent })
+        symbol_from_raw(unsafe { (*(*self.raw).data).parent })
     }
 
     #[inline(always)]
     pub fn export_symbol(self) -> Option<Symbol<'a>> {
-        symbol_from_raw(unsafe { (*self.raw).exportSymbol })
+        unsafe {
+            let extra = (*(*self.raw).data).extra;
+            if extra.is_null() {
+                None
+            } else {
+                symbol_from_raw((*extra).exportSymbol)
+            }
+        }
     }
 }
 
@@ -746,7 +770,18 @@ impl<'a> Signature<'a> {
 
     #[inline(always)]
     pub fn type_parameters(self) -> SliceIter<'a, RawType, Type<'a>> {
-        slice_iter(unsafe { (*self.raw).typeParameters })
+        unsafe {
+            let extra = (*self.raw).extra;
+            if extra.is_null() {
+                slice_iter(GoSlice {
+                    data: std::ptr::null(),
+                    len: 0,
+                    cap: 0,
+                })
+            } else {
+                slice_iter((*extra).typeParameters)
+            }
+        }
     }
 
     #[inline(always)]
@@ -756,7 +791,14 @@ impl<'a> Signature<'a> {
 
     #[inline(always)]
     pub fn this_parameter(self) -> Option<Symbol<'a>> {
-        symbol_from_raw(unsafe { (*self.raw).thisParameter })
+        unsafe {
+            let extra = (*self.raw).extra;
+            if extra.is_null() {
+                None
+            } else {
+                symbol_from_raw((*extra).thisParameter)
+            }
+        }
     }
 
     #[inline(always)]
@@ -766,7 +808,14 @@ impl<'a> Signature<'a> {
 
     #[inline(always)]
     pub fn resolved_type_predicate(self) -> Option<CheckerTypePredicate<'a>> {
-        type_predicate_from_raw(unsafe { (*self.raw).resolvedTypePredicate })
+        unsafe {
+            let extra = (*self.raw).extra;
+            if extra.is_null() {
+                None
+            } else {
+                type_predicate_from_raw((*extra).resolvedTypePredicate)
+            }
+        }
     }
 
     #[inline(always)]
@@ -781,12 +830,26 @@ impl<'a> Signature<'a> {
 
     #[inline(always)]
     pub fn isolated_signature_type(self) -> Option<Type<'a>> {
-        type_from_raw(unsafe { (*self.raw).isolatedSignatureType })
+        unsafe {
+            let extra = (*self.raw).extra;
+            if extra.is_null() {
+                None
+            } else {
+                type_from_raw((*extra).isolatedSignatureType)
+            }
+        }
     }
 
     #[inline(always)]
     pub fn composite(self) -> Option<CompositeSignature<'a>> {
-        composite_signature_from_raw(unsafe { (*self.raw).composite })
+        unsafe {
+            let extra = (*self.raw).extra;
+            if extra.is_null() {
+                None
+            } else {
+                composite_signature_from_raw((*extra).composite)
+            }
+        }
     }
 }
 

@@ -10,17 +10,17 @@ import (
 	"github.com/auvred/golar/internal/linter"
 	"github.com/auvred/golar/internal/typeencoder"
 	"github.com/auvred/golar/internal/utils"
-	"github.com/microsoft/typescript-go/pkg/api/encoder"
-	"github.com/microsoft/typescript-go/pkg/ast"
-	"github.com/microsoft/typescript-go/pkg/bundled"
-	"github.com/microsoft/typescript-go/pkg/checker"
-	"github.com/microsoft/typescript-go/pkg/collections"
-	"github.com/microsoft/typescript-go/pkg/compiler"
-	"github.com/microsoft/typescript-go/pkg/core"
-	"github.com/microsoft/typescript-go/pkg/execute/tsc"
-	"github.com/microsoft/typescript-go/pkg/tspath"
-	"github.com/microsoft/typescript-go/pkg/vfs/cachedvfs"
-	"github.com/microsoft/typescript-go/pkg/vfs/osvfs"
+	"github.com/microsoft/TypeScript/tsc/pkg/api/encoder"
+	"github.com/microsoft/TypeScript/tsc/pkg/ast"
+	"github.com/microsoft/TypeScript/tsc/pkg/bundled"
+	"github.com/microsoft/TypeScript/tsc/pkg/checker"
+	"github.com/microsoft/TypeScript/tsc/pkg/collections"
+	"github.com/microsoft/TypeScript/tsc/pkg/compiler"
+	"github.com/microsoft/TypeScript/tsc/pkg/core"
+	"github.com/microsoft/TypeScript/tsc/pkg/execute/tsc"
+	"github.com/microsoft/TypeScript/tsc/pkg/tspath"
+	"github.com/microsoft/TypeScript/tsc/pkg/vfs/cachedvfs"
+	"github.com/microsoft/TypeScript/tsc/pkg/vfs/osvfs"
 )
 
 type program struct {
@@ -57,10 +57,10 @@ type Workspace struct {
 	// used only for encoding purposes
 	FilesById []*ast.SourceFile
 	// program id -> program
-	Programs          []*program
-	reportBaseDir     string
-	pathCaseSensitive bool
-	reportMu          sync.Mutex
+	Programs            []*program
+	reportBaseDir       string
+	pathCaseSensitivity tspath.CaseSensitivity
+	reportMu            sync.Mutex
 }
 
 func New(cwd string, filenames []string) *Workspace {
@@ -104,11 +104,11 @@ func New(cwd string, filenames []string) *Workspace {
 	}
 
 	workspace := &Workspace{
-		RequestedFiles:    requestedFiles,
-		FilesById:         filesById,
-		Programs:          programs,
-		reportBaseDir:     tspath.NormalizePath(cwd),
-		pathCaseSensitive: fs.UseCaseSensitiveFileNames(),
+		RequestedFiles:      requestedFiles,
+		FilesById:           filesById,
+		Programs:            programs,
+		reportBaseDir:       tspath.NormalizePath(cwd),
+		pathCaseSensitivity: fs.CaseSensitivity(),
 	}
 
 	return workspace

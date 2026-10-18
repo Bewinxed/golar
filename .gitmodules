@@ -8,7 +8,7 @@
 	shallow = true
 [submodule "thirdparty/typescript-go"]
 	path = thirdparty/typescript-go
-	url = https://github.com/microsoft/typescript-go
+	url = https://github.com/microsoft/typescript
 [submodule "thirdparty/go"]
 	path = thirdparty/go
 	url = https://github.com/golang/go

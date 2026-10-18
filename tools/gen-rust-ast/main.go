@@ -16,8 +16,8 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-const tsgoInternalPrefix = "github.com/microsoft/typescript-go/pkg/"
-const tsgoAstSchemaPath = "thirdparty/typescript-go/_scripts/ast.json"
+const tsgoInternalPrefix = "github.com/microsoft/TypeScript/tsc/pkg/"
+const tsgoAstSchemaPath = "thirdparty/typescript-go/tools/scripts/tsc/ast.json"
 const rustGeneratedDir = "crates/golar/src"
 
 // TODO
@@ -1444,6 +1444,14 @@ func mapNamedPointerField(rawName, getterName string, elem *types.Named) (fieldI
 	switch elemName {
 	case "FlowNode", "TypeMapper", "Checker":
 		return fieldInfo{skip: true}, true
+	case "structuredTypeExtra":
+		return fieldInfo{
+			rawName:    rawName,
+			getterName: getterName,
+			rawType:    "*const u8",
+			getterType: "*const u8",
+			getterBody: rawField,
+		}, true
 	case "Symbol":
 		return fieldInfo{
 			rawName:    rawName,
