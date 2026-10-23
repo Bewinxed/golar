@@ -93,11 +93,12 @@ if (argv[0] === 'tsc') {
 		offset += 4 + argLen
 	}
 
-	addon.tsc(worker_threads.threadId, (exitCode) => process.exit(exitCode))
-
 	if (hasJsCodegenPlugins) {
-		// spawn workers after tsc, so tsconfig parsing and initial module resolution
-		// start as early as possible
+		// The codegen workers are up before tsc starts: a tsc that ended while a
+		// worker was still registering its codegen with the addon called
+		// process.exit under it, and the process died in its exit (V8 "Check
+		// failed: !is_null()", exit 133; or the Go runtime's "traceback did not
+		// unwind completely", exit 134), after printing its whole output.
 		worker_threads.setEnvironmentData('golar-env', {
 			configPath,
 			cwd,
@@ -115,6 +116,8 @@ if (argv[0] === 'tsc') {
 		}
 		await Promise.all(promises)
 	}
+
+	addon.tsc(worker_threads.threadId, (exitCode) => process.exit(exitCode))
 } else {
 	const lintOnly = argv[0] === 'lint'
 	const typecheckOnly = argv[0] === 'typecheck'
