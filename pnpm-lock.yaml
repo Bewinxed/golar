@@ -99,6 +99,12 @@ importers:
         specifier: ^5.53.6
         version: 5.53.6
 
+  e2e/js-rule-utf16-ranges/fixture:
+    dependencies:
+      golar:
+        specifier: workspace:*
+        version: link:../../../packages/golar
+
   e2e/js-rule-worker-threads/fixture:
     dependencies:
       golar:
