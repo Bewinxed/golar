@@ -56,7 +56,7 @@ func (p *program) forThread(threadId uint32) *programThread {
 	c, _ := checker.NewChecker(p.program, nil)
 	thread = &programThread{
 		checker: c,
-		encoder: typeencoder.New(),
+		encoder: typeencoder.New(c),
 	}
 	p.threads[threadId] = thread
 	return thread
