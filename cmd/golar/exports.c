@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #ifdef GOLAR_NAPI_DYNAMIC
 #include <dlfcn.h>
@@ -126,11 +127,25 @@ static napi_value linter_RuleTesterLint_bridge(napi_env env, napi_callback_info 
 	return res_str;
 }
 
-void workspace_created_cb(napi_env env, napi_value cb, void *context, void *data) {
+// The thread-safe functions' call_js callbacks. N-API calls them with a NULL
+// env and js_callback while it tears a function down (its thread is exiting):
+// JS can no longer run then, so each returns at once.
+
+// Calls a done callback with no arguments. An exception the callback throws
+// stays pending, and N-API reports it as uncaught.
+static void call_done_cb(napi_env env, napi_value cb, void *context, void *data) {
+	if (env == NULL || cb == NULL) {
+		return;
+	}
 	napi_value undefined;
-	napi_get_undefined(env, &undefined);
-	napi_call_function(env, undefined, cb, 0, NULL, NULL);
+	if (napi_get_undefined(env, &undefined) != napi_ok) {
+		return;
+	}
+	if (napi_call_function(env, undefined, cb, 0, NULL, NULL) != napi_ok) {
+		return;
+	}
 }
+
 static napi_value workspace_New_bridge(napi_env env, napi_callback_info info) {
 	size_t argc = 1;
 	napi_value on_created_cb;
@@ -141,7 +156,7 @@ static napi_value workspace_New_bridge(napi_env env, napi_callback_info info) {
 	napi_create_string_utf8(env, "golar: workspace created", NAPI_AUTO_LENGTH, &resource_name);
 
 	napi_threadsafe_function cb_ptr;
-	napi_create_threadsafe_function(env, on_created_cb, NULL, resource_name, 0, 1, NULL, NULL, NULL, workspace_created_cb, &cb_ptr);
+	napi_create_threadsafe_function(env, on_created_cb, NULL, resource_name, 0, 1, NULL, NULL, NULL, call_done_cb, &cb_ptr);
 
 	golar_js_workspace_New((uintptr_t)cb_ptr);
 	return NULL;
@@ -175,11 +190,6 @@ static napi_value workspace_GetTypeAtLocation_bridge(napi_env env, napi_callback
 	return NULL;
 }
 
-static void call_lint_done_cb(napi_env env, napi_value cb, void *context, void *data) {
-	napi_value undefined;
-	napi_get_undefined(env, &undefined);
-	napi_call_function(env, undefined, cb, 0, NULL, NULL);
-}
 static napi_value workspace_Lint_bridge(napi_env env, napi_callback_info info) {
 	size_t argc = 1;
 	napi_value done_cb;
@@ -189,7 +199,7 @@ static napi_value workspace_Lint_bridge(napi_env env, napi_callback_info info) {
 	napi_create_string_utf8(env, "golar: lint done", NAPI_AUTO_LENGTH, &resource_name);
 
 	napi_threadsafe_function done_cb_tsfn;
-	napi_create_threadsafe_function(env, done_cb, NULL, resource_name, 0, 1, NULL, NULL, NULL, call_lint_done_cb, &done_cb_tsfn);
+	napi_create_threadsafe_function(env, done_cb, NULL, resource_name, 0, 1, NULL, NULL, NULL, call_done_cb, &done_cb_tsfn);
 
 	golar_js_workspace_Lint((uintptr_t)done_cb_tsfn);
 	return NULL;
@@ -207,32 +217,98 @@ static napi_value workspace_ReportCount_bridge(napi_env env, napi_callback_info 
 	return count;
 }
 
-napi_value create_service_code_done_cb(napi_env env, napi_callback_info info) {
+// The exception pending on env, cleared, or NULL when there is none.
+static napi_value take_pending_exception(napi_env env) {
+	bool pending = false;
+	if (napi_is_exception_pending(env, &pending) != napi_ok || !pending) {
+		return NULL;
+	}
+	napi_value exception;
+	if (napi_get_and_clear_last_exception(env, &exception) != napi_ok) {
+		return NULL;
+	}
+	return exception;
+}
+
+// Answers the Go side of a codegen request that JS could not answer, with
+// reason (an exception or a rejection value, or NULL) as the file's service
+// code error, so Go never waits for a response that will not come.
+static void create_service_code_failed(napi_env env, uint32_t thread_id, napi_value reason, const char *fallback) {
+	char *message = NULL;
+	size_t message_len = 0;
+	napi_value reason_str;
+	if (reason != NULL &&
+		napi_coerce_to_string(env, reason, &reason_str) == napi_ok &&
+		napi_get_value_string_utf8(env, reason_str, NULL, 0, &message_len) == napi_ok) {
+		message = malloc(message_len + 1);
+		if (message != NULL &&
+			napi_get_value_string_utf8(env, reason_str, message, message_len + 1, &message_len) != napi_ok) {
+			free(message);
+			message = NULL;
+		}
+	}
+	// Coercing the reason can throw (a Symbol has no string conversion).
+	take_pending_exception(env);
+
+	if (message == NULL) {
+		golar_js_jsCodegenCreateServiceCodeFailed(thread_id, (char *)fallback, strlen(fallback));
+		return;
+	}
+	golar_js_jsCodegenCreateServiceCodeFailed(thread_id, message, message_len);
+	free(message);
+}
+
+static napi_value create_service_code_fulfilled_cb(napi_env env, napi_callback_info info) {
 	void *data;
-	napi_get_cb_info(env, info, NULL, NULL, NULL, &data);
-
+	if (napi_get_cb_info(env, info, NULL, NULL, NULL, &data) != napi_ok) {
+		return NULL;
+	}
 	golar_js_jsCodegenCreateServiceCodeResponse((uint32_t)(uintptr_t)data);
-
 	return NULL;
 }
 
-void call_create_service_code_cb(napi_env env, napi_value cb, void *context, void *data) {
+static napi_value create_service_code_rejected_cb(napi_env env, napi_callback_info info) {
+	size_t argc = 1;
+	napi_value reason;
+	void *data;
+	if (napi_get_cb_info(env, info, &argc, &reason, NULL, &data) != napi_ok) {
+		return NULL;
+	}
+	create_service_code_failed(env, (uint32_t)(uintptr_t)data, reason, "golar: createServiceCode was rejected");
+	return NULL;
+}
+
+#define CREATE_SERVICE_CODE_CHECK(CALL, STEP) \
+	if ((CALL) != napi_ok) { \
+		create_service_code_failed(env, thread_id, take_pending_exception(env), "golar: createServiceCode failed: " STEP); \
+		return; \
+	}
+
+static void call_create_service_code_cb(napi_env env, napi_value cb, void *context, void *data) {
+	if (env == NULL || cb == NULL) {
+		return;
+	}
+	uint32_t thread_id = (uint32_t)(uintptr_t)context;
+
 	napi_value undefined;
-	napi_get_undefined(env, &undefined);
+	CREATE_SERVICE_CODE_CHECK(napi_get_undefined(env, &undefined), "napi_get_undefined");
 
 	napi_value result;
-	napi_call_function(env, undefined, cb, 0, NULL, &result);
+	CREATE_SERVICE_CODE_CHECK(napi_call_function(env, undefined, cb, 0, NULL, &result), "the call threw");
 
 	// TODO(perf): fast path for sync returns
 	napi_value then;
-	napi_get_named_property(env, result, "then", &then);
+	CREATE_SERVICE_CODE_CHECK(napi_get_named_property(env, result, "then", &then), "reading its result's then");
 
-	napi_value then_cb;
-	napi_create_function(env, "then", 4, create_service_code_done_cb, context, &then_cb);
+	napi_value callbacks[2];
+	CREATE_SERVICE_CODE_CHECK(napi_create_function(env, "onFulfilled", NAPI_AUTO_LENGTH, create_service_code_fulfilled_cb, context, &callbacks[0]), "napi_create_function");
+	CREATE_SERVICE_CODE_CHECK(napi_create_function(env, "onRejected", NAPI_AUTO_LENGTH, create_service_code_rejected_cb, context, &callbacks[1]), "napi_create_function");
 
 	napi_value then_promise;
-	napi_call_function(env, result, then, 1, &then_cb, &then_promise);
+	CREATE_SERVICE_CODE_CHECK(napi_call_function(env, result, then, 2, callbacks, &then_promise), "its result is not a promise");
 }
+
+#undef CREATE_SERVICE_CODE_CHECK
 
 static napi_value registerJsCodegen_bridge(napi_env env, napi_callback_info info) {
 	size_t argc = 2;
@@ -258,14 +334,25 @@ static napi_value registerIpcCodegen_bridge(napi_env env, napi_callback_info inf
 	return NULL;
 }
 
+// Calls a done callback with the exit code. An exception the callback throws
+// stays pending, and N-API reports it as uncaught.
 static void call_exit_code_cb(napi_env env, napi_value cb, void *context, void *data) {
+	if (env == NULL || cb == NULL) {
+		return;
+	}
 	napi_value undefined;
-	napi_get_undefined(env, &undefined);
+	if (napi_get_undefined(env, &undefined) != napi_ok) {
+		return;
+	}
 
 	napi_value exit_code;
-	napi_create_uint32(env, (uint32_t)(uintptr_t)data, &exit_code);
+	if (napi_create_uint32(env, (uint32_t)(uintptr_t)data, &exit_code) != napi_ok) {
+		return;
+	}
 
-	napi_call_function(env, undefined, cb, 1, &exit_code, NULL);
+	if (napi_call_function(env, undefined, cb, 1, &exit_code, NULL) != napi_ok) {
+		return;
+	}
 }
 
 static napi_value tsc_bridge(napi_env env, napi_callback_info info) {

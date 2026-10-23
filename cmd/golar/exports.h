@@ -136,6 +136,7 @@ extern uintptr_t golar_program_get_type_at_location(uintptr_t programPtr, uintpt
 extern void golar_workspace_report(uintptr_t workspacePtr, uint32_t fileIdx, int32_t start, int32_t end, char* ruleNameData, size_t ruleNameLen, char* messageData, size_t messageLen);
 extern void golar_js_registerJsCodegen(uint32_t threadId, uintptr_t createServiceCodeTsfn);
 extern void golar_js_jsCodegenCreateServiceCodeResponse(uint32_t threadId);
+extern void golar_js_jsCodegenCreateServiceCodeFailed(uint32_t threadId, char* messageData, size_t messageLen);
 extern void golar_js_registerIpcCodegen(void);
 
 #ifdef __cplusplus

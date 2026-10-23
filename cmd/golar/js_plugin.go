@@ -63,6 +63,14 @@ func golar_js_jsCodegenCreateServiceCodeResponse(threadId C.uint32_t) {
 	tscodegenplugin.JsPluginHandleCreateServiceCodeResponse(buf)
 }
 
+//export golar_js_jsCodegenCreateServiceCodeFailed
+func golar_js_jsCodegenCreateServiceCodeFailed(threadId C.uint32_t, messageData *C.char, messageLen C.size_t) {
+	jsPluginsMu.Lock()
+	host := jsPluginHost
+	jsPluginsMu.Unlock()
+	host.HandleCreateServiceCodeFailure(uint32(threadId), C.GoStringN(messageData, C.int(messageLen)))
+}
+
 //export golar_js_registerIpcCodegen
 func golar_js_registerIpcCodegen() {
 	buf := syncBuffers[0]
