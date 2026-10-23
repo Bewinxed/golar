@@ -1,0 +1,138 @@
+name: CawCo packages
+
+# Builds Golar from this branch for the platforms CawCo uses and attaches the
+# npm tarballs to a GitHub release tagged v<version>-cawco.<n> on this fork.
+# Nothing is published to npm.
+#
+# The release tag is created by `gh release create` with GITHUB_TOKEN. Events
+# caused by GITHUB_TOKEN don't start workflow runs, so the tag does not trigger
+# release.yml (`on: push: tags: v*`). Never push a v* tag to this fork by hand.
+
+permissions: {}
+
+on:
+  workflow_dispatch:
+    inputs:
+      n:
+        description: 'Build number: the release is tagged v<version>-cawco.<n>'
+        required: true
+        type: number
+
+jobs:
+  build:
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      matrix:
+        include:
+          - runs_on: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            libc: glibc
+            artifact_name: golar-linux-amd64
+          - runs_on: macos-latest
+            goos: darwin
+            goarch: arm64
+            artifact_name: golar-darwin-arm64
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 24.13.1
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions"
+
+          node ./tools/patch-astro.ts
+          node ./tools/patch-tsgo.ts
+
+      - run: pnpm build:golar release put-to-bin
+
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: bin/
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write # gh release create
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 24.13.1
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: golar-*
+          path: build
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions"
+
+          node ./tools/patch-astro.ts
+          node ./tools/patch-tsgo.ts
+
+      - run: pnpm build:typescript-lite
+
+      - run: pnpm build:packages
+
+      - name: Pack
+        env:
+          N: ${{ inputs.n }}
+        run: |
+          version="$(node -p 'require("./package.json").version')-cawco.$N"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+          cp build/golar-linux-amd64/golar.node generated-packages/@golar-linux-x64/
+          cp build/golar-darwin-arm64/golar.node generated-packages/@golar-darwin-arm64/
+
+          # golar and @golar/svelte carry the fixes; the two addon packages carry
+          # the Go build. Versions are set first so workspace:* resolves to them.
+          packages="packages/golar packages/svelte generated-packages/@golar-linux-x64 generated-packages/@golar-darwin-arm64"
+          for dir in $packages; do
+            (cd "$dir" && npm pkg set version="$version")
+          done
+          mkdir tarballs
+          for dir in $packages; do
+            (cd "$dir" && pnpm pack --pack-destination "$GITHUB_WORKSPACE/tarballs")
+          done
+          ls -l tarballs
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" tarballs/*.tgz \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "v$VERSION" \
+            --notes "Golar $VERSION: upstream v$(node -p 'require("./package.json").version') plus CawCo's fixes from the cawco branch. Linux x64 (glibc) and macOS arm64 only. Not published to npm." \
+            --prerelease
