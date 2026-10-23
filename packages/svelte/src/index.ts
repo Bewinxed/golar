@@ -46,9 +46,15 @@ async function importPackages(
 	const majorVersion = Number.parseInt(
 		svelteCompilerPackageJson.version.split('.')[0]!,
 	)
-	const svelte2tsxPath = require.resolve('svelte2tsx', {
-		paths: [...resolvePaths, import.meta.dirname],
-	})
+	// svelte2tsx is this package's own dependency, pinned to the version its
+	// shims and mappings are written for: resolved from here, never from the
+	// project. A lookup from the project walks up past its root, and an
+	// unrelated `node_modules` above it (a home folder's svelte-language-server
+	// install, with a svelte2tsx that parses with its own Svelte 4) answered
+	// first: every component failed with Svelte 4's parse errors.
+	const svelte2tsxPath = createRequire(import.meta.filename).resolve(
+		'svelte2tsx',
+	)
 	const [svelteCompiler, svelte2tsx, ts] = await Promise.all([
 		// Copied from packages/language-server/src/plugins/typescript/service.ts
 		// Svelte 4 has some fixes with regards to parsing the generics attribute.
@@ -57,9 +63,9 @@ async function importPackages(
 		majorVersion >= 4
 			? import(
 					pathToFileURL(
-						require.resolve('svelte/compiler', {
-							paths: [...resolvePaths, import.meta.dirname],
-						}),
+						// The compiler of the svelte whose version was read above,
+						// never another one a separate lookup could find.
+						createRequire(sveltePackageJsonPath).resolve('svelte/compiler'),
 					).toString()
 				)
 			: undefined,
