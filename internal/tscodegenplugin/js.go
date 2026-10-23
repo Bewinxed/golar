@@ -59,7 +59,7 @@ type jsCreateServiceCodeRequest struct {
 type jsCreateServiceCodePendingRequest struct {
 	started  time.Time
 	fileName string
-	callback func(payload []byte)
+	callback func(response CreateServiceCodeResponse)
 }
 
 type JsPluginWorker struct {
@@ -79,9 +79,9 @@ func (w *JsPluginWorker) spawn() {
 		w.pendingRequest = jsCreateServiceCodePendingRequest{
 			started:  time.Now(),
 			fileName: req.req.FileName,
-			callback: func(buf []byte) {
+			callback: func(r CreateServiceCodeResponse) {
 				defer wg.Done()
-				response = decodeCreateServiceCodeResponse(buf)
+				response = r
 			},
 		}
 
@@ -101,7 +101,16 @@ func JsPluginHandleCreateServiceCodeResponse(buf []byte) {
 	offset := 0
 	w := (*JsPluginWorker)(unsafe.Pointer(uintptr(binary.LittleEndian.Uint64(buf[offset:]))))
 	offset += 8
-	w.pendingRequest.callback(w.buf[offset:])
+	w.pendingRequest.callback(decodeCreateServiceCodeResponse(w.buf[offset:]))
+}
+
+// HandleCreateServiceCodeFailure answers the request pending on workerId's
+// thread, whose createServiceCode threw or was rejected, with message as the
+// file's service code error.
+func (h *JsPluginHost) HandleCreateServiceCodeFailure(workerId uint32, message string) {
+	h.workers[workerId].pendingRequest.callback(CreateServiceCodeResponse{
+		Errors: []ServiceCodeError{{Message: message}},
+	})
 }
 
 type JsPlugin struct {
