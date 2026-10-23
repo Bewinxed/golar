@@ -156,6 +156,18 @@ importers:
         specifier: ^5.53.6
         version: 5.53.6
 
+  e2e/svelte-unmapped-diagnostic/fixture:
+    dependencies:
+      '@golar/svelte':
+        specifier: workspace:*
+        version: link:../../../packages/svelte
+      golar:
+        specifier: workspace:*
+        version: link:../../../packages/golar
+      svelte:
+        specifier: ^5.53.6
+        version: 5.53.6
+
   e2e/typecheck-gitignore/fixture:
     dependencies:
       golar:
