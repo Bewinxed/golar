@@ -56,6 +56,26 @@ export function loadAddon() {
 		// exit directly to prevent recursive re-entry when Node re-raises the signal
 		process.once(sig, () => process.exit(128 + code))
 	}
+	// Go requires every signal handler in the process to be installed with
+	// SA_ONSTACK, so that it runs on the thread's signal stack and not on a
+	// goroutine's stack, which can be as small as 2 KiB (a signal frame alone
+	// is ~3.4 KiB on AVX-512 x86-64). When the addon loads, the Go runtime
+	// adds SA_ONSTACK to every handler already installed (initsig/setsigstack
+	// in runtime/signal_unix.go), but libuv installs its handlers without it
+	// (uv__signal_register_handler in src/unix/signal.c) and only installs one
+	// when no watcher for that signal exists. So without these listeners, each
+	// child process spawned while Go runs (a config calling execFileSync, on
+	// the main thread or a worker) reinstalls libuv's SIGCHLD handler without
+	// SA_ONSTACK; a SIGCHLD that lands on a Go thread then writes its frame
+	// below the running goroutine's stack and corrupts the Go heap ("traceback
+	// did not unwind completely", "sweep increased allocation count").
+	// A listener started before the addon loads gets SA_ONSTACK from the Go
+	// runtime and keeps libuv from reinstalling the handler for the rest of
+	// the process. SIGWINCH is the other signal Node itself listens for later
+	// (a TTY stream's resize). Signal listeners don't keep the event loop alive.
+	for (const sig of ['SIGCHLD', 'SIGWINCH'] as const) {
+		process.on(sig, () => {})
+	}
 
 	addonLoaded = true
 	process.dlopen(
