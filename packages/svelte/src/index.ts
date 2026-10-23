@@ -10,7 +10,11 @@ import util from 'node:util'
 import { sourceMapToMappings } from '@golar/sourcemap'
 import { pathToFileURL } from 'node:url'
 
-const require = createRequire(process.cwd())
+// The working directory as a directory: given without a trailing separator,
+// createRequire takes it for a file and starts its lookups, package.json
+// reads included, in the folder above it, outside the project (where a
+// sandbox may refuse the read: ERR_INVALID_PACKAGE_CONFIG).
+const require = createRequire(path.join(process.cwd(), '/'))
 
 const svelteTsxFilesByProject = new Map<string, string[]>()
 
