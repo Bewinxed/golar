@@ -1,0 +1,16 @@
+{
+	"name": "toast-lib",
+	"version": "1.0.0",
+	"type": "module",
+	"svelte": "./lib/index.js",
+	"types": "./lib/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./lib/index.d.ts",
+			"svelte": "./lib/index.js"
+		}
+	},
+	"peerDependencies": {
+		"svelte": "^5.0.0"
+	}
+}

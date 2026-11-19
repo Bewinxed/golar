@@ -180,6 +180,21 @@ importers:
         specifier: ^5.53.6
         version: 5.53.6
 
+  e2e/svelte-sibling-declaration/fixture:
+    dependencies:
+      '@golar/svelte':
+        specifier: workspace:*
+        version: link:../../../packages/svelte
+      golar:
+        specifier: workspace:*
+        version: link:../../../packages/golar
+      svelte:
+        specifier: ^5.53.6
+        version: 5.53.6
+      toast-lib:
+        specifier: file:./toast-lib
+        version: file:e2e/svelte-sibling-declaration/fixture/toast-lib(svelte@5.53.6)
+
   e2e/svelte-unmapped-diagnostic/fixture:
     dependencies:
       '@golar/svelte':
@@ -3316,6 +3331,11 @@ packages:
   tinyrainbow@3.1.0:
     resolution: {integrity: sha512-Bf+ILmBgretUrdJxzXM0SgXLZ3XfiaUuOj/IKQHuTXip+05Xn+uyEYdVg0kYDipTBcLrCVyUzAPz7QmArb0mmw==}
     engines: {node: '>=14.0.0'}
+
+  toast-lib@file:e2e/svelte-sibling-declaration/fixture/toast-lib:
+    resolution: {directory: e2e/svelte-sibling-declaration/fixture/toast-lib, type: directory}
+    peerDependencies:
+      svelte: ^5.0.0
 
   token-stream@1.0.0:
     resolution: {integrity: sha512-VSsyNPPW74RpHwR8Fc21uubwHY7wMDeJLys2IX5zJNih+OnAnaifKHo+1LHT7DAdloQ7apeaaWg8l7qnf/TnEg==}
@@ -7311,6 +7331,10 @@ snapshots:
       picomatch: 4.0.4
 
   tinyrainbow@3.1.0: {}
+
+  toast-lib@file:e2e/svelte-sibling-declaration/fixture/toast-lib(svelte@5.53.6):
+    dependencies:
+      svelte: 5.53.6
 
   token-stream@1.0.0: {}
 

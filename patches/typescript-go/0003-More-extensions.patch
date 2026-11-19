@@ -1,4 +1,4 @@
-From 904182e0fb3aea17e9c1ca07bcf0f222d39ffbc2 Mon Sep 17 00:00:00 2001
+From de263da823185ad5f66ca3bd5acc9a9361132ce3 Mon Sep 17 00:00:00 2001
 From: auvred <aauvred@gmail.com>
 Date: Mon, 9 Mar 2026 10:37:15 +0300
 Subject: [PATCH 3/3] More extensions
@@ -10,9 +10,9 @@ Subject: [PATCH 3/3] More extensions
  tsc/pkg/api/encoder/encoder.go                | 12 +++++++----
  tsc/pkg/ast/ast.go                            | 20 ++++++++++++-------
  tsc/pkg/compiler/program.go                   |  4 ++--
- tsc/pkg/module/resolver.go                    |  2 +-
+ tsc/pkg/module/resolver.go                    |  8 +++++++-
  tsc/pkg/tspath/extension.go                   |  1 +
- 8 files changed, 47 insertions(+), 17 deletions(-)
+ 8 files changed, 53 insertions(+), 17 deletions(-)
 
 diff --git a/packages/typescript/src/api/node/node.generated.ts b/packages/typescript/src/api/node/node.generated.ts
 index 0f69dbc63a..7757ed29ad 100644
@@ -232,18 +232,27 @@ index 0d44777efb..72165ab9db 100644
  	p := &Program{
  		opts:            opts.ProgramConfig,
 diff --git a/tsc/pkg/module/resolver.go b/tsc/pkg/module/resolver.go
-index 0f2493a5c2..40057b195d 100644
+index 0f2493a5c2..c20fb3f44b 100644
 --- a/tsc/pkg/module/resolver.go
 +++ b/tsc/pkg/module/resolver.go
-@@ -1765,7 +1765,7 @@ func (r *resolutionState) tryAddingExtensions(extensionless tspath.FileNameStem,
+@@ -1765,10 +1765,16 @@ func (r *resolutionState) tryAddingExtensions(extensionless tspath.FileNameStem,
  	default:
  		for _, e := range tspath.ExtraExtensions {
  			if e == originalExtension {
 -				if extensions&extensionsDeclaration != 0 && !tspath.IsDeclarationFileName(extensionless+originalExtension) {
++				// A declaration beside the file wins over the file itself, as in
++				// svelte-check: `./x.svelte` resolves to `x.d.svelte.ts`, then
++				// `x.svelte.d.ts`, and only then to `x.svelte`.
 +				if extensions&extensionsDeclaration != 0 && !extensionless.AppendSuffix(originalExtension).IsDeclarationFile() {
  					if resolved := r.tryExtension(".d"+originalExtension+".ts", extensionless, false); !resolved.shouldContinueSearching() {
  						return resolved
  					}
++					if resolved := r.tryExtension(tspath.ExtensionDts, extensionless.AppendSuffix(originalExtension).AsStem(), false); !resolved.shouldContinueSearching() {
++						return resolved
++					}
+ 				}
+ 				if resolved := r.tryExtension(originalExtension, extensionless, false); !resolved.shouldContinueSearching() {
+ 					return resolved
 diff --git a/tsc/pkg/tspath/extension.go b/tsc/pkg/tspath/extension.go
 index 23067810be..06201b49b4 100644
 --- a/tsc/pkg/tspath/extension.go
